@@ -8,17 +8,3 @@
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
-
-@keyframes floaty {
-  0%,
-  100% {
-    transform: translateY(0) rotate(var(--tilt, 0deg));
-  }
-  50% {
-    transform: translateY(-14px) rotate(var(--tilt, 0deg));
-  }
-}
-
-.floaty {
-  animation: floaty 6s ease-in-out infinite;
-}

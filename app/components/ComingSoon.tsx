@@ -2,8 +2,42 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { WaitlistForm } from "./shared";
-import { Header, STEPS } from "./V1";
+import {
+  useCountdown,
+  WaitlistForm,
+  SPOTS_TAKEN,
+  SPOTS_TOTAL,
+} from "./shared";
+
+const STEPS = [
+  { n: "1", t: "Add your boat", d: "Photos, a voice note or a PDF — anything works." },
+  { n: "2", t: "We build the sale", d: "Verified listing, market price, every platform." },
+  { n: "3", t: "You sign", d: "Screened buyers, viewings and paperwork handled." },
+];
+
+function Header() {
+  const { days, hours, minutes, ready } = useCountdown();
+  return (
+    <header className="relative flex items-center justify-between px-6 sm:px-12 py-6">
+      <span className="font-[family-name:var(--font-script)] text-2xl text-blue-800">
+        Boatuneet
+      </span>
+      <div className="flex items-center gap-4">
+        <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/70 backdrop-blur-md text-xs text-slate-600 px-4 py-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          {SPOTS_TAKEN} / {SPOTS_TOTAL} early spots taken
+        </span>
+        <div
+          className="text-xs text-blue-800/80 tabular-nums tracking-wider"
+          style={{ visibility: ready ? "visible" : "hidden" }}
+        >
+          {days}d : {String(hours).padStart(2, "0")}h :{" "}
+          {String(minutes).padStart(2, "0")}m
+        </div>
+      </div>
+    </header>
+  );
+}
 
 /** Tilts the element back in 3D and flattens it as it scrolls into view.
  *  The glow element fades out in sync as the card flattens. */
@@ -82,7 +116,7 @@ function ExplainerVideo() {
   );
 }
 
-export default function V2() {
+export default function ComingSoon() {
   const { ref: tiltRef, glowRef } = useScrollTilt<HTMLDivElement>();
   return (
     <main className="flex-1 min-h-screen overflow-x-clip bg-gradient-to-b from-[#eef3f7] via-[#f6f8fa] to-white text-slate-900">
