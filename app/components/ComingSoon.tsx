@@ -20,7 +20,7 @@ function Header({ status }: { status: Status }) {
         width={800}
         height={493}
         preload
-        className="h-11 sm:h-14 w-auto"
+        className="h-9 sm:h-11 w-auto"
       />
       <div className="flex items-center gap-4">
         <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/70 backdrop-blur-md text-xs text-slate-600 px-4 py-1.5">
