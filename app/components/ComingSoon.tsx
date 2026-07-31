@@ -41,23 +41,41 @@ function Header({ status }: { status: Status }) {
 }
 
 /** Tilts the element back in 3D and flattens it as it scrolls into view.
- *  The glow element fades out in sync as the card flattens. */
+ *  In sync with the flattening: the glow fades out, the whole video block
+ *  rides up over the hero, and the hero blurs away underneath it. */
 function useScrollTilt<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const glowRef = useRef<HTMLDivElement>(null);
+  const riseRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const anchorRef = useRef<HTMLElement>(null);
+  const followRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     let raf = 0;
+    // Progress is derived from the untransformed section, never from an
+    // element this hook itself moves — measuring a translated element would
+    // feed the output back into the input and oscillate.
+    const anchor = anchorRef.current ?? el;
     const update = () => {
-      const r = el.getBoundingClientRect();
+      const r = anchor.getBoundingClientRect();
       const vh = window.innerHeight;
       // 1 = fully tilted (card top low in viewport), 0 = flat (card top near 30% of viewport)
       const start = vh * 0.75;
       const end = vh * 0.3;
       const p = Math.min(1, Math.max(0, (r.top - end) / (start - end)));
+      const q = 1 - p;
       el.style.transform = `rotateX(${p * 25}deg) scale(${1 - p * 0.08})`;
       if (glowRef.current) glowRef.current.style.opacity = String(p);
+      if (riseRef.current)
+        riseRef.current.style.transform = `translateY(${-q * 130}px)`;
+      if (followRef.current)
+        followRef.current.style.transform = `translateY(${-q * 130}px)`;
+      if (heroRef.current) {
+        heroRef.current.style.filter = `blur(${q * 9}px)`;
+        heroRef.current.style.opacity = String(1 - q * 0.35);
+      }
     };
     const onScroll = () => {
       cancelAnimationFrame(raf);
@@ -72,7 +90,7 @@ function useScrollTilt<T extends HTMLElement>() {
       cancelAnimationFrame(raf);
     };
   }, []);
-  return { ref, glowRef };
+  return { ref, glowRef, riseRef, heroRef, anchorRef, followRef };
 }
 
 function ExplainerVideo() {
@@ -118,22 +136,27 @@ function ExplainerVideo() {
 }
 
 export default function ComingSoon({ status }: { status: Status }) {
-  const { ref: tiltRef, glowRef } = useScrollTilt<HTMLDivElement>();
+  const { ref: tiltRef, glowRef, riseRef, heroRef, anchorRef, followRef } =
+    useScrollTilt<HTMLDivElement>();
   return (
     <main className="relative flex-1 min-h-screen overflow-x-clip text-slate-900">
       <AuroraBackground />
 
       <Header status={status} />
 
-      {/* hero — centered */}
-      <section className="px-6 pt-10 sm:pt-16 text-center flex flex-col items-center">
+      {/* hero — centered; blurs away as the video rides up over it */}
+      <section
+        ref={heroRef}
+        className="px-6 pt-10 sm:pt-16 text-center flex flex-col items-center"
+        style={{ willChange: "filter, opacity" }}
+      >
         <h1 className="flex flex-row flex-wrap items-center justify-center gap-1.5 sm:gap-4 lg:gap-6 text-[2.8rem] sm:text-6xl md:text-8xl lg:text-9xl leading-none">
           <span className="font-serif italic font-medium">Your boat.</span>
           <span className="font-sans font-extrabold tracking-tighter text-blue-800">
             Sold.
           </span>
         </h1>
-        <p className="mt-6 max-w-md md:max-w-xl text-slate-600 text-sm sm:text-lg md:text-xl font-light leading-relaxed">
+        <p className="mt-6 max-w-xl md:max-w-3xl text-slate-600 text-sm sm:text-lg md:text-xl font-light leading-relaxed">
           Boatuneet is the selling platform for boat owners and dealers. It
           writes and verifies your listing, prices it against the market, finds
           and screens real buyers, and preps every document — you just sign.
@@ -144,9 +167,13 @@ export default function ComingSoon({ status }: { status: Status }) {
         </div>
       </section>
 
-      {/* video — large, under hero */}
-      <section className="px-6 mt-8 sm:mt-10">
-        <div className="relative max-w-6xl mx-auto">
+      {/* video — large, under hero; rises over the blurring hero on scroll */}
+      <section ref={anchorRef} className="relative z-10 px-6 mt-8 sm:mt-10">
+        <div
+          ref={riseRef}
+          className="relative max-w-6xl mx-auto"
+          style={{ willChange: "transform" }}
+        >
           {/* full-width white glow behind the card's bottom edge; fades as the card flattens */}
           <div
             ref={glowRef}
@@ -169,33 +196,36 @@ export default function ComingSoon({ status }: { status: Status }) {
         </div>
       </section>
 
-      {/* steps */}
-      <section className="px-6 mt-16 sm:mt-24 pb-20">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid sm:grid-cols-3 gap-4">
+      {/* steps — compact full-width strip; follows the video's rise */}
+      <section
+        ref={followRef}
+        className="mt-10 sm:mt-12 pb-20"
+        style={{ willChange: "transform" }}
+      >
+        <div className="w-full border-y border-slate-200/80 bg-white/60 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80">
             {STEPS.map((s) => (
-              <div
-                key={s.n}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm text-left"
-              >
-                <div className="text-blue-800 text-xs font-semibold">
+              <div key={s.n} className="flex items-baseline gap-3 px-6 py-5">
+                <span className="text-blue-800 text-xs font-semibold whitespace-nowrap">
                   STEP {s.n}
-                </div>
-                <div className="font-semibold mt-1">{s.t}</div>
-                <div className="text-slate-500 text-sm mt-1 leading-relaxed">
-                  {s.d}
+                </span>
+                <div className="text-left">
+                  <div className="font-semibold text-sm">{s.t}</div>
+                  <div className="text-slate-500 text-xs mt-0.5 leading-relaxed">
+                    {s.d}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+        </div>
 
-          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs text-slate-500 tracking-wide">
-            <span>16 selling tools in one place</span>
-            <span className="text-slate-300">·</span>
-            <span>40+ marketplaces &amp; platforms covered</span>
-            <span className="text-slate-300">·</span>
-            <span>Every buyer KYC &amp; AML screened</span>
-          </div>
+        <div className="mt-8 px-6 flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs text-slate-500 tracking-wide">
+          <span>16 selling tools in one place</span>
+          <span className="text-slate-300">·</span>
+          <span>40+ marketplaces &amp; platforms covered</span>
+          <span className="text-slate-300">·</span>
+          <span>Every buyer KYC &amp; AML screened</span>
         </div>
       </section>
     </main>
