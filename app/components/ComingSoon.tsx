@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useCountdown, WaitlistForm, type Status } from "./shared";
+import { AuroraBackground } from "./aurora-background";
 
 const STEPS = [
   { n: "1", t: "Add your boat", d: "Photos, a voice note or a PDF — anything works." },
@@ -119,7 +120,9 @@ function ExplainerVideo() {
 export default function ComingSoon({ status }: { status: Status }) {
   const { ref: tiltRef, glowRef } = useScrollTilt<HTMLDivElement>();
   return (
-    <main className="flex-1 min-h-screen overflow-x-clip bg-gradient-to-b from-[#eef3f7] via-[#f6f8fa] to-white text-slate-900">
+    <main className="relative flex-1 min-h-screen overflow-x-clip text-slate-900">
+      <AuroraBackground />
+
       <Header status={status} />
 
       {/* hero — centered */}
@@ -139,7 +142,7 @@ export default function ComingSoon({ status }: { status: Status }) {
       </section>
 
       {/* video — large, under hero */}
-      <section className="px-6 mt-14 sm:mt-20">
+      <section className="px-6 mt-8 sm:mt-10">
         <div className="relative max-w-6xl mx-auto">
           {/* full-width white glow behind the card's bottom edge; fades as the card flattens */}
           <div

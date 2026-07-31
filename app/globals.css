@@ -2,8 +2,42 @@
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
+  --animate-aurora: aurora 60s linear infinite;
 }
 
+/* Aurora stops. Tailwind v4 only exposes --color-* names, so the bare
+   variables the aurora gradients reference are declared here. */
+:root {
+  --white: #ffffff;
+  --black: #000000;
+  --transparent: transparent;
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --indigo-300: #a5b4fc;
+  --violet-200: #ddd6fe;
+}
+
+@keyframes aurora {
+  from {
+    background-position: 50% 50%, 50% 50%;
+  }
+  to {
+    background-position: 350% 50%, 350% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .after\:animate-aurora::after {
+    animation: none;
+  }
+}
+
+/* Lives on body, not on <main>: the background propagates to the canvas, which
+   leaves the aurora's negative z-index layer visible above it and below the
+   page content. An opaque background on <main> would bury the effect. */
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background: linear-gradient(to bottom, #eef3f7 0%, #f6f8fa 55%, #ffffff 100%);
+  background-attachment: fixed;
 }
