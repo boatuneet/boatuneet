@@ -109,10 +109,13 @@ export function WaitlistForm({
           {joined.cap} early-access spots ⚓
         </div>
         <p className={`text-sm mt-1 ${t.sub}`}>
-          Every friend who joins with your link moves you up 10 spots — the top
-          100 get free listings for a year.
+          We&apos;ll email you the moment your spot opens. Until then, nothing
+          else lands in your inbox.
         </p>
-        <div className="mt-3 flex items-center gap-2">
+        <p className={`text-xs mt-4 ${t.sub}`}>
+          Know someone else with a boat to sell? Send them your link.
+        </p>
+        <div className="mt-2 flex items-center gap-2">
           <code
             className={`flex-1 truncate rounded-lg px-3 py-2 text-xs ${t.link}`}
           >

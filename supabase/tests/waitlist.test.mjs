@@ -2,10 +2,14 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
-const SQL = readFileSync(
-  new URL("../migrations/20260731044503_waitlist_schema.sql", import.meta.url),
-  "utf8",
-);
+// Apply every migration in order, so the tests exercise the real end state.
+const MIGRATIONS = [
+  "20260731044503_waitlist_schema.sql",
+  "20260731062558_stable_waitlist_position.sql",
+];
+const SQL = MIGRATIONS.map((m) =>
+  readFileSync(new URL(`../migrations/${m}`, import.meta.url), "utf8"),
+).join("\n");
 
 const db = new PGlite();
 
@@ -48,11 +52,15 @@ console.log("✓ duplicate email returns same position, no new row");
 await assert.rejects(() => join("not-an-email"), /invalid_email/);
 console.log("✓ invalid email rejected");
 
-// ---- referral moves you up 10 -------------------------------------------
+// ---- referrals are recorded but must NOT move your position -------------
 await join("friend@example.com", j.ref_code);
 const afterRef = await join("first@example.com");
-assert.equal(afterRef.place, 49, "one referral should move #59 to #49");
-console.log("✓ referral moved position 59 → 49");
+assert.equal(afterRef.place, 59, "position must stay put when someone uses your link");
+const ref = await db.query(
+  "select referred_by from waitlist_signups where email = 'friend@example.com'",
+);
+assert.equal(ref.rows[0].referred_by, j.ref_code, "referred_by should still be recorded");
+console.log("✓ referral recorded as attribution, position unchanged");
 
 // ---- fill the cap --------------------------------------------------------
 for (let i = 0; i < 140; i++) {
