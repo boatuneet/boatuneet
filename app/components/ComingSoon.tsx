@@ -2,12 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import {
-  useCountdown,
-  WaitlistForm,
-  SPOTS_TAKEN,
-  SPOTS_TOTAL,
-} from "./shared";
+import { useCountdown, WaitlistForm, type Status } from "./shared";
 
 const STEPS = [
   { n: "1", t: "Add your boat", d: "Photos, a voice note or a PDF — anything works." },
@@ -15,7 +10,7 @@ const STEPS = [
   { n: "3", t: "You sign", d: "Screened buyers, viewings and paperwork handled." },
 ];
 
-function Header() {
+function Header({ status }: { status: Status }) {
   const { days, hours, minutes, ready } = useCountdown();
   return (
     <header className="relative flex items-center justify-between px-6 sm:px-12 py-6">
@@ -25,7 +20,7 @@ function Header() {
       <div className="flex items-center gap-4">
         <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/70 backdrop-blur-md text-xs text-slate-600 px-4 py-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          {SPOTS_TAKEN} / {SPOTS_TOTAL} early spots taken
+          {status.taken} / {status.cap} early spots taken
         </span>
         <div
           className="text-xs text-blue-800/80 tabular-nums tracking-wider"
@@ -116,11 +111,11 @@ function ExplainerVideo() {
   );
 }
 
-export default function ComingSoon() {
+export default function ComingSoon({ status }: { status: Status }) {
   const { ref: tiltRef, glowRef } = useScrollTilt<HTMLDivElement>();
   return (
     <main className="flex-1 min-h-screen overflow-x-clip bg-gradient-to-b from-[#eef3f7] via-[#f6f8fa] to-white text-slate-900">
-      <Header />
+      <Header status={status} />
 
       {/* hero — centered */}
       <section className="px-6 pt-10 sm:pt-16 text-center flex flex-col items-center">
@@ -134,7 +129,7 @@ export default function ComingSoon() {
         </p>
 
         <div className="mt-8 w-full max-w-lg">
-          <WaitlistForm dark={false} />
+          <WaitlistForm dark={false} status={status} />
         </div>
       </section>
 
