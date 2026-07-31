@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useCountdown, WaitlistForm, type Status } from "./shared";
 import { AuroraBackground } from "./aurora-background";
 
@@ -40,57 +42,55 @@ function Header({ status }: { status: Status }) {
   );
 }
 
-/** Tilts the element back in 3D and flattens it as it scrolls into view.
- *  In sync with the flattening: the glow fades out, the whole video block
- *  rides up over the hero, and the hero blurs away underneath it. */
-function useScrollTilt<T extends HTMLElement>() {
+/** Two-stage scroll, driven by GSAP ScrollTrigger.
+ *
+ *  Stage 1 (rest): hero crisp, video tilted back below it.
+ *  Stage 2 (scrolled): video risen up flat over a blurred hero, steps visible.
+ *
+ *  scrub keeps the timeline tied to scroll position; snap makes any scroll
+ *  inside the range glide to one stage or the other, so there is no lingering
+ *  half-blurred in-between state. Progress is 0 at scrollY 0, which also
+ *  guarantees the hero is perfectly crisp on landing. */
+function useScrollStages<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const riseRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
-  const anchorRef = useRef<HTMLElement>(null);
   const followRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let raf = 0;
-    // Progress is derived from the untransformed section, never from an
-    // element this hook itself moves — measuring a translated element would
-    // feed the output back into the input and oscillate.
-    const anchor = anchorRef.current ?? el;
-    const update = () => {
-      const r = anchor.getBoundingClientRect();
-      const vh = window.innerHeight;
-      // 1 = fully tilted (card top low in viewport), 0 = flat (card top near 30% of viewport)
-      const start = vh * 0.75;
-      const end = vh * 0.3;
-      const p = Math.min(1, Math.max(0, (r.top - end) / (start - end)));
-      const q = 1 - p;
-      el.style.transform = `rotateX(${p * 25}deg) scale(${1 - p * 0.08})`;
-      if (glowRef.current) glowRef.current.style.opacity = String(p);
-      if (riseRef.current)
-        riseRef.current.style.transform = `translateY(${-q * 130}px)`;
-      if (followRef.current)
-        followRef.current.style.transform = `translateY(${-q * 130}px)`;
-      if (heroRef.current) {
-        heroRef.current.style.filter = `blur(${q * 9}px)`;
-        heroRef.current.style.opacity = String(1 - q * 0.35);
-      }
-    };
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      cancelAnimationFrame(raf);
-    };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // No tilt is ever applied, so the page simply renders flat and static.
+      return;
+    }
+    gsap.registerPlugin(ScrollTrigger);
+    const ctx = gsap.context(() => {
+      gsap.set(ref.current, { rotateX: 25, scale: 0.92 });
+      const tl = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          start: 0,
+          // Clamp to what the page can actually scroll, otherwise the snap
+          // aims past max scroll and stalls just short of stage 2.
+          end: () => Math.min(650, ScrollTrigger.maxScroll(window)),
+          invalidateOnRefresh: true,
+          scrub: 0.4,
+          snap: {
+            snapTo: [0, 1],
+            duration: { min: 0.35, max: 0.8 },
+            delay: 0.05,
+            ease: "power2.inOut",
+          },
+        },
+      });
+      tl.to(ref.current, { rotateX: 0, scale: 1 }, 0)
+        .to(riseRef.current, { y: -140 }, 0)
+        .to(followRef.current, { y: -140 }, 0)
+        .to(heroRef.current, { filter: "blur(9px)", opacity: 0.6 }, 0)
+        .to(glowRef.current, { opacity: 0 }, 0);
+    });
+    return () => ctx.revert();
   }, []);
-  return { ref, glowRef, riseRef, heroRef, anchorRef, followRef };
+  return { ref, glowRef, riseRef, heroRef, followRef };
 }
 
 function ExplainerVideo() {
@@ -136,8 +136,8 @@ function ExplainerVideo() {
 }
 
 export default function ComingSoon({ status }: { status: Status }) {
-  const { ref: tiltRef, glowRef, riseRef, heroRef, anchorRef, followRef } =
-    useScrollTilt<HTMLDivElement>();
+  const { ref: tiltRef, glowRef, riseRef, heroRef, followRef } =
+    useScrollStages<HTMLDivElement>();
   return (
     <main className="relative flex-1 min-h-screen overflow-x-clip text-slate-900">
       <AuroraBackground />
@@ -168,7 +168,7 @@ export default function ComingSoon({ status }: { status: Status }) {
       </section>
 
       {/* video — large, under hero; rises over the blurring hero on scroll */}
-      <section ref={anchorRef} className="relative z-10 px-6 mt-8 sm:mt-10">
+      <section className="relative z-10 px-6 mt-8 sm:mt-10">
         <div
           ref={riseRef}
           className="relative max-w-6xl mx-auto"
