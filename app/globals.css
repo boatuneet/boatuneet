@@ -2,7 +2,6 @@
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
-  --font-script: var(--font-pacifico);
 }
 
 body {

@@ -14,9 +14,14 @@ function Header({ status }: { status: Status }) {
   const { days, hours, minutes, ready } = useCountdown();
   return (
     <header className="relative flex items-center justify-between px-6 sm:px-12 py-6">
-      <span className="font-[family-name:var(--font-script)] text-2xl text-blue-800">
-        Boatuneet
-      </span>
+      <Image
+        src="/logo.png"
+        alt="Uneet"
+        width={800}
+        height={493}
+        preload
+        className="h-11 sm:h-14 w-auto"
+      />
       <div className="flex items-center gap-4">
         <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/70 backdrop-blur-md text-xs text-slate-600 px-4 py-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -77,7 +82,7 @@ function ExplainerVideo() {
       {playing ? (
         <video
           src="/coming-soon-video.mp4"
-          poster="/v7-yacht.png"
+          poster="/video-poster.jpg"
           controls
           autoPlay
           className="w-full h-full object-cover"
@@ -89,7 +94,7 @@ function ExplainerVideo() {
           className="group absolute inset-0 w-full cursor-pointer"
         >
           <Image
-            src="/v7-yacht.png"
+            src="/video-poster.jpg"
             alt="Boatuneet explainer video preview"
             fill
             preload
