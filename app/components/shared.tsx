@@ -24,6 +24,38 @@ export function useCountdown() {
 
 export type Status = { taken: number; cap: number; spotsLeft: number };
 
+/** Confetti burst on a successful signup. Loaded on demand so the library
+ *  never ships in the initial bundle for a page most visitors only read. */
+async function celebrate() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const confetti = (await import("canvas-confetti")).default;
+  const colors = ["#1e40af", "#3b82f6", "#93c5fd", "#10b981", "#ffffff"];
+  confetti({ particleCount: 90, spread: 70, origin: { y: 0.7 }, colors });
+  // Two angled follow-ups make the burst feel like it fills the width.
+  setTimeout(
+    () =>
+      confetti({
+        particleCount: 45,
+        angle: 60,
+        spread: 60,
+        origin: { x: 0, y: 0.75 },
+        colors,
+      }),
+    140,
+  );
+  setTimeout(
+    () =>
+      confetti({
+        particleCount: 45,
+        angle: 120,
+        spread: 60,
+        origin: { x: 1, y: 0.75 },
+        colors,
+      }),
+    140,
+  );
+}
+
 type Joined = { position: number; cap: number; refCode: string };
 
 /** Waitlist form with scarcity meter and post-signup referral state. */
@@ -39,7 +71,6 @@ export function WaitlistForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const t = dark
     ? {
@@ -93,6 +124,7 @@ export function WaitlistForm({
         return;
       }
       setJoined(data);
+      void celebrate();
     } catch {
       setError("Couldn't reach the server. Please try again.");
     } finally {
@@ -101,7 +133,6 @@ export function WaitlistForm({
   }
 
   if (joined) {
-    const link = `https://boatuneet.com/?ref=${joined.refCode}`;
     return (
       <div className={`rounded-2xl border p-5 max-w-lg ${t.done}`}>
         <div className="font-semibold">
@@ -112,25 +143,6 @@ export function WaitlistForm({
           We&apos;ll email you the moment your spot opens. Until then, nothing
           else lands in your inbox.
         </p>
-        <p className={`text-xs mt-4 ${t.sub}`}>
-          Know someone else with a boat to sell? Send them your link.
-        </p>
-        <div className="mt-2 flex items-center gap-2">
-          <code
-            className={`flex-1 truncate rounded-lg px-3 py-2 text-xs ${t.link}`}
-          >
-            {link}
-          </code>
-          <button
-            onClick={() => {
-              navigator.clipboard?.writeText(link);
-              setCopied(true);
-            }}
-            className={`rounded-lg text-xs font-semibold px-4 py-2 transition-colors ${t.btn}`}
-          >
-            {copied ? "Copied ✓" : "Copy"}
-          </button>
-        </div>
       </div>
     );
   }
