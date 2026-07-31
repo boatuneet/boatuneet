@@ -127,10 +127,13 @@ export default function ComingSoon({ status }: { status: Status }) {
 
       {/* hero — centered */}
       <section className="px-6 pt-10 sm:pt-16 text-center flex flex-col items-center">
-        <h1 className="text-6xl sm:text-8xl font-semibold tracking-tight leading-[0.95]">
-          Your boat. <span className="text-blue-800">Sold.</span>
+        <h1 className="flex flex-row flex-wrap items-center justify-center gap-1.5 sm:gap-4 lg:gap-6 text-[2.8rem] sm:text-6xl md:text-8xl lg:text-9xl leading-none">
+          <span className="font-serif italic font-medium">Your boat.</span>
+          <span className="font-sans font-extrabold tracking-tighter text-blue-800">
+            Sold.
+          </span>
         </h1>
-        <p className="mt-6 max-w-2xl text-slate-600 text-base sm:text-lg leading-relaxed">
+        <p className="mt-6 max-w-md md:max-w-xl text-slate-600 text-sm sm:text-lg md:text-xl font-light leading-relaxed">
           Boatuneet is the selling platform for boat owners and dealers. It
           writes and verifies your listing, prices it against the market, finds
           and screens real buyers, and preps every document — you just sign.
