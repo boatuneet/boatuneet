@@ -63,32 +63,85 @@ function useScrollStages<T extends HTMLElement>() {
       return;
     }
     gsap.registerPlugin(ScrollTrigger);
+
+    // Stage 2 must land the steps strip exactly at the viewport bottom on any
+    // screen. The total shift needed is (steps bottom − viewport height),
+    // measured via the offsetParent chain so the hook's own transforms never
+    // feed back into the numbers. The shift is then split between real page
+    // scroll and the rise translation: scroll as much as the page allows,
+    // rise for the remainder (at least 120px so the video visibly overlaps
+    // the hero).
+    const metrics = () => {
+      const steps = followRef.current;
+      if (!steps) return { scroll: 400, rise: 140 };
+      let top = 0;
+      for (let n: HTMLElement | null = steps; n; n = n.offsetParent as HTMLElement | null) {
+        top += n.offsetTop;
+      }
+      const shift = Math.max(0, top + steps.offsetHeight + 24 - window.innerHeight);
+      // Scroll as far as the page allows (its height already excludes the rise
+      // via the -mb on the steps section); the rise covers the remainder.
+      // 2px shy of max scroll: if the trigger ends exactly at max scroll,
+      // fractional pixel heights can leave progress at 0.999 and the snap
+      // oscillates between the stages instead of settling.
+      const maxScroll = ScrollTrigger.maxScroll(window) - 2;
+      const scroll = Math.max(1, Math.min(shift, maxScroll));
+      const rise = Math.max(0, shift - scroll);
+      return { scroll, rise };
+    };
+
     const ctx = gsap.context(() => {
       gsap.set(ref.current, { rotateX: 25, scale: 0.92 });
       const tl = gsap.timeline({
         defaults: { ease: "none" },
         scrollTrigger: {
           start: 0,
-          // Clamp to what the page can actually scroll, otherwise the snap
-          // aims past max scroll and stalls just short of stage 2.
-          end: () => Math.min(650, ScrollTrigger.maxScroll(window)),
+          end: () => metrics().scroll,
           invalidateOnRefresh: true,
           scrub: 0.4,
-          snap: {
-            snapTo: [0, 1],
-            duration: { min: 0.35, max: 0.8 },
-            delay: 0.05,
-            ease: "power2.inOut",
-          },
         },
       });
       tl.to(ref.current, { rotateX: 0, scale: 1 }, 0)
-        .to(riseRef.current, { y: -140 }, 0)
-        .to(followRef.current, { y: -140 }, 0)
+        .to(riseRef.current, { y: () => -metrics().rise }, 0)
+        .to(followRef.current, { y: () => -metrics().rise }, 0)
         .to(heroRef.current, { filter: "blur(9px)", opacity: 0.6 }, 0)
         .to(glowRef.current, { opacity: 0 }, 0);
     });
-    return () => ctx.revert();
+
+    // Hand-rolled two-stage snap (ScrollTrigger's snap oscillated with the
+    // dynamic end/rise values): when scrolling pauses between the stages,
+    // glide to stage 2 on any downward movement, stage 1 on any upward.
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    let prevY = window.scrollY;
+    let gliding = false;
+    const onUserInput = () => {
+      gliding = false; // the user interrupted a glide; re-arm
+    };
+    const onScroll = () => {
+      const y = window.scrollY;
+      const goingDown = y > prevY;
+      prevY = y;
+      if (gliding) return;
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        const endY = metrics().scroll;
+        if (y <= 1 || y >= endY) return; // already resting on a stage
+        gliding = true;
+        window.scrollTo({ top: goingDown ? endY : 0, behavior: "smooth" });
+      }, 140);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("wheel", onUserInput, { passive: true });
+    window.addEventListener("touchstart", onUserInput, { passive: true });
+    window.addEventListener("keydown", onUserInput, { passive: true });
+    return () => {
+      clearTimeout(settle);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", onUserInput);
+      window.removeEventListener("touchstart", onUserInput);
+      window.removeEventListener("keydown", onUserInput);
+      ctx.revert();
+    };
   }, []);
   return { ref, glowRef, riseRef, heroRef, followRef };
 }
@@ -169,9 +222,11 @@ export default function ComingSoon({ status }: { status: Status }) {
 
       {/* video — large, under hero; rises over the blurring hero on scroll */}
       <section className="relative z-10 px-6 mt-8 sm:mt-10">
+        {/* width capped by viewport height so video + caption + steps always
+            fit one screen in stage 2 (aspect-video: h = w * 9/16) */}
         <div
           ref={riseRef}
-          className="relative max-w-6xl mx-auto"
+          className="relative mx-auto max-w-[min(72rem,calc((100vh-240px)*1.7778))]"
           style={{ willChange: "transform" }}
         >
           {/* full-width white glow behind the card's bottom edge; fades as the card flattens */}
@@ -197,9 +252,11 @@ export default function ComingSoon({ status }: { status: Status }) {
       </section>
 
       {/* steps — compact full-width strip; follows the video's rise */}
+      {/* -mb cancels the rise distance from the document height, making stage 2
+          the exact end of the page — you cannot scroll past the framed state */}
       <section
         ref={followRef}
-        className="mt-10 sm:mt-12 pb-20"
+        className="mt-10 sm:mt-12 pb-6 -mb-[140px]"
         style={{ willChange: "transform" }}
       >
         <div className="w-full border-y border-slate-200/80 bg-white/60 backdrop-blur-sm">
@@ -220,13 +277,6 @@ export default function ComingSoon({ status }: { status: Status }) {
           </div>
         </div>
 
-        <div className="mt-8 px-6 flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs text-slate-500 tracking-wide">
-          <span>16 selling tools in one place</span>
-          <span className="text-slate-300">·</span>
-          <span>40+ marketplaces &amp; platforms covered</span>
-          <span className="text-slate-300">·</span>
-          <span>Every buyer KYC &amp; AML screened</span>
-        </div>
       </section>
     </main>
   );

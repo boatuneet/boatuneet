@@ -33,6 +33,13 @@
   }
 }
 
+/* Scroll anchoring fights the GSAP-driven rise: as elements translate up,
+   Chrome adjusts scrollTop to keep them in view, ratcheting the snap back to
+   the top. */
+html {
+  overflow-anchor: none;
+}
+
 /* Lives on body, not on <main>: the background propagates to the canvas, which
    leaves the aurora's negative z-index layer visible above it and below the
    page content. An opaque background on <main> would bury the effect. */
