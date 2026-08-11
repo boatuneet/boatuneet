@@ -10,6 +10,7 @@ export type WaitlistStatus = {
   taken: number;
   cap: number;
   spotsLeft: number;
+  isLive: boolean;
 };
 
 export type JoinResult = {
@@ -20,7 +21,12 @@ export type JoinResult = {
 };
 
 /** Shown when Supabase isn't configured yet, so the page still renders. */
-const FALLBACK: WaitlistStatus = { taken: 58, cap: 200, spotsLeft: 142 };
+const FALLBACK: WaitlistStatus = {
+  taken: 0,
+  cap: 200,
+  spotsLeft: 200,
+  isLive: false,
+};
 
 let cached: SupabaseClient | null = null;
 
@@ -57,7 +63,12 @@ export async function getStatus(): Promise<WaitlistStatus> {
     return FALLBACK;
   }
 
-  return { taken: data.taken, cap: data.cap, spotsLeft: data.spots_left };
+  return {
+    taken: data.taken,
+    cap: data.cap,
+    spotsLeft: data.spots_left,
+    isLive: true,
+  };
 }
 
 export async function join(

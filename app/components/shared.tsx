@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 export const LAUNCH = new Date("2026-09-01T12:00:00Z").getTime();
 
@@ -22,7 +22,12 @@ export function useCountdown() {
   };
 }
 
-export type Status = { taken: number; cap: number; spotsLeft: number };
+export type Status = {
+  taken: number;
+  cap: number;
+  spotsLeft: number;
+  isLive: boolean;
+};
 
 /** Confetti burst on a successful signup. Loaded on demand so the library
  *  never ships in the initial bundle for a page most visitors only read. */
@@ -62,15 +67,19 @@ type Joined = { position: number; cap: number; refCode: string };
 export function WaitlistForm({
   dark,
   status,
+  compact = false,
 }: {
   dark: boolean;
   status: Status;
+  compact?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState(""); // honeypot
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
+  const emailId = useId();
+  const noteId = useId();
 
   const t = dark
     ? {
@@ -134,10 +143,10 @@ export function WaitlistForm({
 
   if (joined) {
     return (
-      <div className={`rounded-2xl border p-5 max-w-lg ${t.done}`}>
+      <div className={`${compact ? "rounded-xl p-4" : "rounded-2xl p-5"} max-w-lg border ${t.done}`}>
         <div className="font-semibold">
           You&apos;re <span className="tabular-nums">#{joined.position}</span> of{" "}
-          {joined.cap} early-access spots ⚓
+          {joined.cap} early-access spots.
         </div>
         <p className={`text-sm mt-1 ${t.sub}`}>
           We&apos;ll email you the moment your spot opens. Until then, nothing
@@ -150,41 +159,58 @@ export function WaitlistForm({
   const pct = Math.min(100, (status.taken / status.cap) * 100);
 
   return (
-    <form onSubmit={submit} className="max-w-lg w-full">
-      {/* scarcity meter */}
-      <div>
-        <div className="flex items-baseline justify-between text-xs">
-          <span className={`font-semibold ${t.strong}`}>
-            <span className="tabular-nums">{status.taken}</span> of{" "}
-            <span className="tabular-nums">{status.cap}</span> early-access
-            spots taken
-          </span>
-          <span className={t.sub}>{status.spotsLeft} left</span>
-        </div>
-        <div className={`mt-1.5 h-1.5 rounded-full overflow-hidden ${t.bar}`}>
+    <form onSubmit={submit} className="w-full max-w-lg">
+      {!compact && status.isLive ? (
+        <div>
+          <div className="flex items-baseline justify-between text-xs">
+            <span className={`font-semibold ${t.strong}`}>
+              <span className="tabular-nums">{status.taken}</span> of{" "}
+              <span className="tabular-nums">{status.cap}</span> early-access
+              spots taken
+            </span>
+            <span className={t.sub}>{status.spotsLeft} left</span>
+          </div>
           <div
-            className={`h-full rounded-full transition-[width] duration-500 ${t.fill}`}
-            style={{ width: `${pct}%` }}
-          />
+            role="progressbar"
+            aria-label="Early-access spots taken"
+            aria-valuemin={0}
+            aria-valuemax={status.cap}
+            aria-valuenow={status.taken}
+            className={`mt-1.5 h-1.5 overflow-hidden rounded-full ${t.bar}`}
+          >
+            <div
+              className={`h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none ${t.fill}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
         </div>
-      </div>
+      ) : !compact ? (
+        <p className={`text-xs font-semibold ${t.strong}`}>
+          Early-access applications are open.
+        </p>
+      ) : null}
 
-      <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+      <label htmlFor={emailId} className={compact ? "sr-only" : `mt-4 block text-xs font-semibold ${t.strong}`}>
+        Email address
+      </label>
+      <div className={`${compact ? "" : "mt-2"} flex flex-col items-stretch gap-3 sm:flex-row sm:items-center`}>
         <input
+          id={emailId}
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Enter your email"
+          placeholder="you@example.com"
           autoComplete="email"
-          className={`flex-1 rounded-xl border px-5 py-3.5 text-sm focus:outline-none ${t.input}`}
+          aria-describedby={noteId}
+          className={`min-h-12 flex-1 rounded-xl border px-5 py-3.5 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${t.input}`}
         />
         <button
           type="submit"
           disabled={pending}
-          className={`rounded-xl text-sm font-semibold px-7 py-3.5 transition-colors whitespace-nowrap disabled:opacity-60 ${t.btn}`}
+          className={`min-h-12 cursor-pointer whitespace-nowrap rounded-xl px-7 py-3.5 text-sm font-semibold shadow-sm transition-[transform,box-shadow,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 motion-reduce:transform-none motion-reduce:transition-none ${t.btn}`}
         >
-          {pending ? "Joining…" : "Join the waitlist"}
+          {pending ? "Joining…" : "Join early access"}
         </button>
       </div>
 
@@ -205,9 +231,8 @@ export function WaitlistForm({
           {error}
         </p>
       ) : (
-        <p className={`mt-3 text-xs ${t.sub}`}>
-          No spam — one email at launch, one when early access opens.
-          Unsubscribe anytime.
+        <p id={noteId} className={`${compact ? "mt-2.5" : "mt-3"} text-xs leading-5 ${t.sub}`}>
+          Launch and early-access updates only. Unsubscribe anytime.
         </p>
       )}
     </form>

@@ -9,6 +9,7 @@
     "test:db": "node supabase/tests/waitlist.test.mjs"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@supabase/supabase-js": "^2.111.0",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.4",
