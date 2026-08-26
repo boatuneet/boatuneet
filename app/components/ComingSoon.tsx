@@ -16,7 +16,16 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ValuationForm } from "./shared";
 import { GL } from "./gl";
 
-const YACHT_CARDS = Array.from({ length: 7 }, (_, i) => `/cards/card-${i + 1}.png`);
+const YACHT_CARDS = [
+  { title: "2015 Pershing 92", price: "$2,825,000", specs: ["92 ft", "Mega Yacht"], place: "Fort Lauderdale, Florida" },
+  { title: "2024 Benetti 34M Oasis", price: "$2,350,000", specs: ["112 ft", "Mega Yacht"], place: "Fort Lauderdale, Florida" },
+  { title: "2012 Sunseeker Manhattan 73", price: "$1,399,000", specs: ["74.2 ft", "Motor Yacht"], place: "La Paz, Mexico" },
+  { title: "2025 Riva 130' Bellissima", price: "$24,950,000", specs: ["130 ft", "Motor Yacht"], place: "Palm Beach, Florida" },
+  { title: "2026 Sunreef 80 Power", price: "$12,574,088", specs: ["80 ft", "Catamaran"], place: "Gdansk, Poland" },
+  { title: "2029 ISA Gran Turismo 66", price: "$74,685,998", specs: ["217.7 ft", "Mega Yacht"], place: "Ancona, Italy" },
+  { title: "2001 Jongert 42T", price: "$8,052,084", specs: ["137.8 ft", "Sail Cruiser"], place: "Vilanova i la Geltrú, Barcelona" },
+// v2 busts browser + image-optimizer caches from the previous card set.
+].map((listing, i) => ({ ...listing, src: `/cards/card-${i + 1}.png?v=2` }));
 
 const STEPS = [
   {
@@ -528,10 +537,23 @@ export default function ComingSoon() {
         </div>
         <div className="hero-cards" aria-hidden="true">
           <div data-hero-line className="hero-cards__row">
-            {YACHT_CARDS.map((src) => (
-              <div key={src} className="hero-card">
-                <Image src={src} alt="" fill sizes="200px" />
-              </div>
+            {YACHT_CARDS.map(({ src, title, price, specs, place }) => (
+              <article key={src} className="hero-card">
+                <div className="hero-card__media">
+                  <Image src={src} alt="" fill sizes="240px" />
+                  <span className="hero-card__badge">For sale</span>
+                </div>
+                <div className="hero-card__body">
+                  <h3 className="hero-card__title">{title}</h3>
+                  <p className="hero-card__price">{price}</p>
+                  <ul className="hero-card__specs">
+                    {specs.map((spec) => (
+                      <li key={spec}>{spec}</li>
+                    ))}
+                  </ul>
+                  <p className="hero-card__place">{place}</p>
+                </div>
+              </article>
             ))}
           </div>
         </div>

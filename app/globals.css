@@ -195,19 +195,22 @@ body {
 .hero-cards__row {
   display: flex;
   justify-content: center;
-  gap: 26px;
+  gap: clamp(10px, 1vw, 26px);
 }
 
 .hero-card {
   --r: 0deg;
   --y: 0px;
+  --radius: 20px;
   position: relative;
+  display: flex;
   flex: none;
-  width: 200px;
-  aspect-ratio: 3 / 4;
-  border-radius: 24px;
-  background: #0a1a33;
-  box-shadow: 0 -12px 44px -26px rgb(0 0 0 / 0.5);
+  flex-direction: column;
+  /* Fluid width so all seven cards fit the viewport instead of clipping. */
+  width: clamp(178px, 12.4vw, 240px);
+  border-radius: var(--radius);
+  background: #ffffff;
+  box-shadow: 0 -10px 40px -22px rgb(0 0 0 / 0.55);
   pointer-events: auto;
   transform: rotate(var(--r)) translateY(var(--y));
   /* Return trip is slower than the reveal. */
@@ -234,11 +237,84 @@ body {
   bottom: -220px;
 }
 
-.hero-card img {
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
+.hero-card__media {
+  position: relative;
+  aspect-ratio: 570 / 360; /* native ratio of the card images */
+  overflow: hidden;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.hero-card__media img {
   object-fit: cover;
+}
+
+.hero-card__badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.92);
+  padding: 4px 10px;
+  color: #0f2947;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Body tucks under the photo so its own rounded top corners read against it. */
+.hero-card__body {
+  position: relative;
+  z-index: 1;
+  margin-top: -16px;
+  border-radius: var(--radius);
+  background: inherit;
+  padding: 15px 16px;
+}
+
+.hero-card__title {
+  margin: 0;
+  color: #46586f;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-card__price {
+  margin-top: 6px;
+  color: var(--boat-navy);
+  font-family: var(--font-google-sans-flex), var(--font-geist-sans), Arial, sans-serif;
+  font-size: 1.2rem;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.hero-card__specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 11px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hero-card__specs li {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 3px 9px;
+  color: #46586f;
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+.hero-card__place {
+  margin-top: 11px;
+  color: #8194ab;
+  font-size: 0.68rem;
 }
 
 .hero-card:nth-child(1) { --r: -16deg; --y: 96px; }
@@ -271,8 +347,16 @@ body {
   }
 
   .hero-card {
-    width: 140px;
-    border-radius: 18px;
+    --radius: 16px;
+    width: 178px;
+  }
+
+  .hero-card__body {
+    padding: 12px 13px 13px;
+  }
+
+  .hero-card__price {
+    font-size: 1rem;
   }
 
   .hero-card:nth-child(1),
