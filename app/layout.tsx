@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import {
   Geist,
+  Fraunces,
+  Google_Sans_Flex,
   Montserrat,
-  Playfair_Display,
 } from "next/font/google";
 import "./globals.css";
 
@@ -11,10 +13,17 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+const googleSansFlex = Google_Sans_Flex({
+  variable: "--font-google-sans-flex",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
   style: ["normal", "italic"],
+  axes: ["opsz"],
 });
 
 const brandSans = Montserrat({
@@ -26,7 +35,7 @@ const brandSans = Montserrat({
 export const metadata: Metadata = {
   title: "BoatUneet — Sell your boat. Keep more of the price.",
   description:
-    "A managed 90-day boat sales plan with market-informed pricing, screened enquiries and support through closing for a 2.5% success fee. Join BoatUneet early access.",
+    "Get a free, market-informed valuation of your boat, then sell it through a managed 90-day plan with screened buyers and support through closing — for a 2.5% success fee.",
 };
 
 export default function RootLayout({
@@ -37,9 +46,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${playfair.variable} ${brandSans.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${fraunces.variable} ${googleSansFlex.variable} ${brandSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

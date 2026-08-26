@@ -1,33 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
-
-export const LAUNCH = new Date("2026-09-01T12:00:00Z").getTime();
-
-export function useCountdown() {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const diff = Math.max(0, LAUNCH - (now ?? LAUNCH));
-  const s = Math.floor(diff / 1000);
-  return {
-    days: Math.floor(s / 86400),
-    hours: Math.floor((s % 86400) / 3600),
-    minutes: Math.floor((s % 3600) / 60),
-    seconds: s % 60,
-    ready: now !== null,
-  };
-}
-
-export type Status = {
-  taken: number;
-  cap: number;
-  spotsLeft: number;
-  isLive: boolean;
-};
+import { useId, useState } from "react";
 
 /** Confetti burst on a successful signup. Loaded on demand so the library
  *  never ships in the initial bundle for a page most visitors only read. */
@@ -61,36 +34,32 @@ async function celebrate() {
   );
 }
 
-type Joined = { position: number; cap: number; refCode: string };
-
-/** Waitlist form with scarcity meter and post-signup referral state. */
-export function WaitlistForm({
+/** Free-valuation request form. Captures an email; the valuation itself is
+ *  fulfilled manually by reply. */
+export function ValuationForm({
   dark,
-  status,
   compact = false,
+  onButtonHover,
 }: {
   dark: boolean;
-  status: Status;
   compact?: boolean;
+  onButtonHover?: (hovering: boolean) => void;
 }) {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState(""); // honeypot
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [joined, setJoined] = useState<Joined | null>(null);
+  const [done, setDone] = useState(false);
   const emailId = useId();
   const noteId = useId();
 
   const t = dark
     ? {
         input:
-          "bg-white/5 border-white/15 placeholder:text-neutral-400 focus:border-sky-300/60 text-white",
-        btn: "bg-sky-300 text-[#050a12] hover:bg-sky-200",
+          "bg-white/15 border-white/25 backdrop-blur-xl placeholder:text-white/60 focus:border-sky-300/70 text-white",
+        btn: "cta-button",
         done: "border-sky-300/30 bg-sky-300/10 text-white",
         sub: "text-neutral-400",
-        link: "bg-white/10 text-sky-200",
-        bar: "bg-white/10",
-        fill: "bg-sky-300",
         strong: "text-white",
       }
     : {
@@ -99,9 +68,6 @@ export function WaitlistForm({
         btn: "bg-slate-900 text-white hover:bg-slate-700",
         done: "border-slate-300 bg-white text-slate-900 shadow-sm",
         sub: "text-slate-500",
-        link: "bg-slate-100 text-slate-700",
-        bar: "bg-slate-200",
-        fill: "bg-blue-800",
         strong: "text-slate-900",
       };
 
@@ -132,7 +98,7 @@ export function WaitlistForm({
         );
         return;
       }
-      setJoined(data);
+      setDone(true);
       void celebrate();
     } catch {
       setError("Couldn't reach the server. Please try again.");
@@ -141,56 +107,21 @@ export function WaitlistForm({
     }
   }
 
-  if (joined) {
+  if (done) {
     return (
       <div className={`${compact ? "rounded-xl p-4" : "rounded-2xl p-5"} max-w-lg border ${t.done}`}>
-        <div className="font-semibold">
-          You&apos;re <span className="tabular-nums">#{joined.position}</span> of{" "}
-          {joined.cap} early-access spots.
-        </div>
+        <div className="font-semibold">Valuation request received.</div>
         <p className={`text-sm mt-1 ${t.sub}`}>
-          We&apos;ll email you the moment your spot opens. Until then, nothing
-          else lands in your inbox.
+          We&apos;ll email you a few quick questions about your boat, then send
+          a market-informed price range — usually within two business days.
         </p>
       </div>
     );
   }
 
-  const pct = Math.min(100, (status.taken / status.cap) * 100);
-
   return (
     <form onSubmit={submit} className="w-full max-w-lg">
-      {!compact && status.isLive ? (
-        <div>
-          <div className="flex items-baseline justify-between text-xs">
-            <span className={`font-semibold ${t.strong}`}>
-              <span className="tabular-nums">{status.taken}</span> of{" "}
-              <span className="tabular-nums">{status.cap}</span> early-access
-              spots taken
-            </span>
-            <span className={t.sub}>{status.spotsLeft} left</span>
-          </div>
-          <div
-            role="progressbar"
-            aria-label="Early-access spots taken"
-            aria-valuemin={0}
-            aria-valuemax={status.cap}
-            aria-valuenow={status.taken}
-            className={`mt-1.5 h-1.5 overflow-hidden rounded-full ${t.bar}`}
-          >
-            <div
-              className={`h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none ${t.fill}`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
-      ) : !compact ? (
-        <p className={`text-xs font-semibold ${t.strong}`}>
-          Early-access applications are open.
-        </p>
-      ) : null}
-
-      <label htmlFor={emailId} className={compact ? "sr-only" : `mt-4 block text-xs font-semibold ${t.strong}`}>
+      <label htmlFor={emailId} className={compact ? "sr-only" : `block text-xs font-semibold ${t.strong}`}>
         Email address
       </label>
       <div className={`${compact ? "" : "mt-2"} flex flex-col items-stretch gap-3 sm:flex-row sm:items-center`}>
@@ -202,15 +133,17 @@ export function WaitlistForm({
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           autoComplete="email"
-          aria-describedby={noteId}
-          className={`min-h-12 flex-1 rounded-xl border px-5 py-3.5 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${t.input}`}
+          aria-describedby={compact ? undefined : noteId}
+          className={`h-14 w-full rounded-xl border px-5 text-base sm:flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${t.input}`}
         />
         <button
           type="submit"
           disabled={pending}
-          className={`min-h-12 cursor-pointer whitespace-nowrap rounded-xl px-7 py-3.5 text-sm font-semibold shadow-sm transition-[transform,box-shadow,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 motion-reduce:transform-none motion-reduce:transition-none ${t.btn}`}
+          onMouseEnter={() => onButtonHover?.(true)}
+          onMouseLeave={() => onButtonHover?.(false)}
+          className={`h-14 cursor-pointer whitespace-nowrap rounded-xl px-7 text-sm font-semibold shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${t.btn}`}
         >
-          {pending ? "Joining…" : "Join early access"}
+          {pending ? "Sending…" : "Get my free valuation"}
         </button>
       </div>
 
@@ -230,11 +163,11 @@ export function WaitlistForm({
         <p role="alert" className="mt-3 text-xs text-red-500">
           {error}
         </p>
-      ) : (
-        <p id={noteId} className={`${compact ? "mt-2.5" : "mt-3"} text-xs leading-5 ${t.sub}`}>
-          Launch and early-access updates only. Unsubscribe anytime.
+      ) : !compact ? (
+        <p id={noteId} className={`mt-3 text-xs leading-5 ${t.sub}`}>
+          Free and no obligation — we reply within two business days.
         </p>
-      )}
+      ) : null}
     </form>
   );
 }
