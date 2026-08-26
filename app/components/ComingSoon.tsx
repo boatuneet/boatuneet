@@ -15,6 +15,13 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ValuationForm } from "./shared";
 import { GL } from "./gl";
+import { GradientWave } from "./GradientWave";
+
+/* Frozen at module scope on purpose: GradientWave lists these in its effect
+   deps, so a fresh array/object each render would rebuild the WebGL context. */
+const TRUST_GRADIENT_COLORS = ["#e8f1fb", "#ffffff", "#7dd3fc", "#cfe4f7"];
+const TRUST_GRADIENT_NOISE_FREQ: [number, number] = [0.0001, 0.0009];
+const TRUST_GRADIENT_DEFORM = { incline: 0.5, noiseAmp: 250, noiseFlow: 5 };
 
 const YACHT_CARDS = [
   { title: "2015 Pershing 92", price: "$2,825,000", specs: ["92 ft", "Mega Yacht"], place: "Fort Lauderdale, Florida" },
@@ -300,13 +307,21 @@ function Header({ active }: { active: number }) {
   ];
 
   const onHero = active === 0;
-  // Chapters 1 (fee) and 2 (plan) are dark; the header matches their background.
-  const onDark = active === 1 || active === 2;
+  // The header matches the chapter it floats over: the fee chapter is black,
+  // the plan chapter navy, the rest light.
+  const onBlack = active === 1;
+  const onNavy = active === 2;
+  const onDark = onBlack || onNavy;
+  const variant = onHero
+    ? ""
+    : onBlack
+      ? "site-header--black"
+      : onNavy
+        ? "site-header--dark"
+        : "site-header--scrolled";
 
   return (
-    <header
-      className={`site-header fixed inset-x-0 top-0 z-50 ${onHero ? "" : onDark ? "site-header--dark" : "site-header--scrolled"}`}
-    >
+    <header className={`site-header fixed inset-x-0 top-0 z-50 ${variant}`}>
       <div className="mx-auto flex h-[76px] w-full max-w-[1480px] items-center justify-between px-5 sm:px-8 lg:px-12">
         <Brand inverse={onHero || onDark} />
 
@@ -460,6 +475,13 @@ function PlanChapter() {
 function TrustChapter() {
   return (
     <section id="trust" data-chapter className="chapter chapter--trust scroll-mt-0">
+      <GradientWave
+        colors={TRUST_GRADIENT_COLORS}
+        noiseFrequency={TRUST_GRADIENT_NOISE_FREQ}
+        deform={TRUST_GRADIENT_DEFORM}
+        noiseSpeed={0.00001}
+        shadowPower={8}
+      />
       <div className="chapter-inner grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
         <div data-chapter-reveal>
           <p className="chapter-kicker">— Clarity and control</p>

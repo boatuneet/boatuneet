@@ -91,19 +91,31 @@ body {
   backdrop-filter: blur(18px);
 }
 
-.site-header--dark {
+.site-header--dark,
+.site-header--black {
   border-bottom: 1px solid rgb(255 255 255 / 0.08);
-  background: rgb(4 14 33 / 0.72);
   box-shadow: 0 10px 34px -28px rgb(0 0 0 / 0.8);
   backdrop-filter: blur(18px);
 }
 
-.site-header--dark .nav-link {
+/* Navy over the plan chapter, black over the fee chapter. */
+.site-header--dark {
+  background: rgb(4 14 33 / 0.72);
+}
+
+.site-header--black {
+  background: rgb(0 0 0 / 0.76);
+}
+
+.site-header--dark .nav-link,
+.site-header--black .nav-link {
   color: rgb(255 255 255 / 0.85);
 }
 
 .site-header--dark .nav-link:hover,
-.site-header--dark .nav-link.is-active {
+.site-header--dark .nav-link.is-active,
+.site-header--black .nav-link:hover,
+.site-header--black .nav-link.is-active {
   color: #7dd3fc;
 }
 
@@ -666,8 +678,9 @@ body {
   background: #06142d;
 }
 
+/* Fallback behind the animated GradientWave canvas. */
 .chapter--trust {
-  background: linear-gradient(160deg, #d8e9fb 0%, #f2f8ff 52%, #e2effd 100%);
+  background: #e8f1fb;
 }
 
 .feature-list {
