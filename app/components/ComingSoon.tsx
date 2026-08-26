@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
-  ArrowUp,
   CaretDown,
   ChartLineUp,
   Check,
@@ -15,15 +14,10 @@ import {
 } from "@phosphor-icons/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { WaitlistForm, type Status } from "./shared";
+import { ValuationForm } from "./shared";
+import { MeshGradient } from "@paper-design/shaders-react";
 
-const CHAPTERS = [
-  { id: "intro", label: "Intro" },
-  { id: "fee", label: "The 2.5% advantage" },
-  { id: "plan", label: "The 90-day plan" },
-  { id: "trust", label: "Clarity & control" },
-  { id: "questions", label: "Questions" },
-];
+const YACHT_CARDS = Array.from({ length: 7 }, (_, i) => `/cards/card-${i + 1}.png`);
 
 const STEPS = [
   {
@@ -76,6 +70,10 @@ const FEATURES = [
 ];
 
 const FAQS = [
+  {
+    question: "What does the free valuation include?",
+    answer: "After you send your email, we ask a few quick questions about your boat — make, model, year, condition and location — and reply with a market-informed price range based on comparable listings and current demand. It's free, with no obligation to sell through BoatUneet.",
+  },
   {
     question: "What does the 2.5% fee cover?",
     answer: "The success fee covers BoatUneet's managed sale service and becomes payable when the boat sells. Buyer-broker, tax, legal, survey, escrow and other third-party costs are shown separately in the final terms.",
@@ -218,6 +216,11 @@ function useChapterMotion() {
       const counters = document.querySelectorAll<HTMLElement>("[data-count]");
       if (feeSection && counters.length) {
         const runCounters = () => {
+          gsap.fromTo(
+            "[data-fee-fill]",
+            { scaleX: 0 },
+            { scaleX: 1, duration: 0.9, ease: "power3.out", transformOrigin: "left center" },
+          );
           counters.forEach((counter) => {
             const target = Number(counter.dataset.count ?? 0);
             const value = { current: 0 };
@@ -261,7 +264,7 @@ function Brand({ inverse = false }: { inverse?: boolean }) {
     <a
       href="#intro"
       aria-label="BoatUneet home"
-      className="brand-link inline-flex min-h-11 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-4"
+      className="brand-link inline-flex min-h-11 items-center gap-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-4"
     >
       <Image
         src="/boatuneet-mark.png"
@@ -270,17 +273,17 @@ function Brand({ inverse = false }: { inverse?: boolean }) {
         width={631}
         height={240}
         preload
-        className="brand-mark h-6 w-auto sm:h-7"
+        className={`brand-mark h-5 w-auto sm:h-6 ${inverse ? "brand-mark--inverse" : ""}`}
       />
       <span className="brand-wordmark">
         <span className={`brand-wordmark__boat ${inverse ? "text-white" : "text-ink"}`}>Boat</span>
-        <span className="brand-wordmark__uneet text-boat-blue">Uneet</span>
+        <span className={`brand-wordmark__uneet ${inverse ? "text-sky-300" : "text-boat-blue"}`}>Uneet</span>
       </span>
     </a>
   );
 }
 
-function Header({ status, active }: { status: Status; active: number }) {
+function Header({ active }: { active: number }) {
   const navigation = [
     { href: "#fee", label: "The fee", chapter: 1 },
     { href: "#plan", label: "The 90-day plan", chapter: 2 },
@@ -288,10 +291,16 @@ function Header({ status, active }: { status: Status; active: number }) {
     { href: "#questions", label: "Questions", chapter: 4 },
   ];
 
+  const onHero = active === 0;
+  // Chapters 1 (fee) and 2 (plan) are dark; the header matches their background.
+  const onDark = active === 1 || active === 2;
+
   return (
-    <header className={`site-header fixed inset-x-0 top-0 z-50 ${active > 0 ? "site-header--scrolled" : ""}`}>
+    <header
+      className={`site-header fixed inset-x-0 top-0 z-50 ${onHero ? "" : onDark ? "site-header--dark" : "site-header--scrolled"}`}
+    >
       <div className="mx-auto flex h-[76px] w-full max-w-[1480px] items-center justify-between px-5 sm:px-8 lg:px-12">
-        <Brand />
+        <Brand inverse={onHero || onDark} />
 
         <nav aria-label="Main navigation" className="hidden items-center gap-8 lg:flex">
           {navigation.map((item) => (
@@ -301,50 +310,15 @@ function Header({ status, active }: { status: Status; active: number }) {
           ))}
         </nav>
 
-        {status.isLive && (
-          <span className="hidden items-center gap-2 text-xs font-medium text-slate-700 sm:inline-flex">
-            <span className="h-2 w-2 rounded-full bg-blue-600" aria-hidden="true" />
-            {status.spotsLeft} early spots left
-          </span>
-        )}
+        <a
+          href="#valuation"
+          className={`hidden items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:inline-flex ${onHero || onDark ? "bg-white text-slate-900 hover:bg-white/90" : "bg-slate-900 text-white hover:bg-slate-700"}`}
+        >
+          Get a free valuation
+          <ArrowRight weight="bold" aria-hidden="true" />
+        </a>
       </div>
     </header>
-  );
-}
-
-function ChapterDock({ active }: { active: number }) {
-  const isLastChapter = active === CHAPTERS.length - 1;
-  const nextIndex = isLastChapter ? 0 : active + 1;
-  const next = CHAPTERS[nextIndex];
-
-  return (
-    <nav aria-label="Chapter navigation" className="chapter-dock hidden lg:grid">
-      <a href={`#${CHAPTERS[active].id}`} className="chapter-dock__current">
-        <span className="text-sm font-bold tabular-nums">{String(active + 1).padStart(2, "0")}</span>
-        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">{CHAPTERS[active].label}</span>
-      </a>
-
-      <div className="chapter-dock__progress" aria-label={`Chapter ${active + 1} of ${CHAPTERS.length}`}>
-        {CHAPTERS.map((chapter, index) => (
-          <a key={chapter.id} href={`#${chapter.id}`} aria-label={`Go to ${chapter.label}`} className="chapter-dock__track">
-            <span style={{ transform: `scaleX(${index <= active ? 1 : 0})` }} />
-          </a>
-        ))}
-      </div>
-
-      <a
-        href={`#${next.id}`}
-        aria-label={isLastChapter ? "Back to top and restart the BoatUneet story" : `Continue to ${next.label}`}
-        className="chapter-dock__next"
-      >
-        <span className="hidden xl:inline tabular-nums">{String(nextIndex + 1).padStart(2, "0")}</span>
-        <span className="hidden xl:inline">{isLastChapter ? next.label : "Next"}</span>
-        <span className="chapter-dock__button">
-          <span className="hidden xl:inline">{isLastChapter ? "Back to top" : "Continue"}</span>
-          {isLastChapter ? <ArrowUp weight="bold" aria-hidden="true" /> : <ArrowRight weight="bold" aria-hidden="true" />}
-        </span>
-      </a>
-    </nav>
   );
 }
 
@@ -388,9 +362,9 @@ function FeeChapter() {
     <section id="fee" data-chapter className="chapter chapter--fee scroll-mt-0">
       <div className="chapter-inner grid items-center gap-12 lg:grid-cols-[0.78fr_1.22fr] lg:gap-20">
         <div data-chapter-reveal>
-          <p className="chapter-kicker">02 · A clearer fee</p>
-          <h2 className="chapter-title mt-4">Keep up to 7.5% more of the sale price.</h2>
-          <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
+          <p className="chapter-kicker text-sky-300">— A clearer fee</p>
+          <h2 className="chapter-title mt-4 text-white">Keep up to 7.5% more of the sale price.</h2>
+          <p className="mt-6 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
             Traditional broker commissions can reach 8–10%. BoatUneet&apos;s managed service uses a 2.5% success fee, so more of the asset&apos;s value stays with you.
           </p>
           <a href="#plan" className="chapter-link mt-8">
@@ -398,33 +372,37 @@ function FeeChapter() {
           </a>
         </div>
 
-        <div data-chapter-reveal className="fee-ledger" aria-label="Illustrative fee comparison">
-          <div className="fee-ledger__row fee-ledger__row--primary">
+        <div data-chapter-reveal className="fee-compare" aria-label="Illustrative fee comparison">
+          <div className="fee-compare__row">
             <div>
-              <p>BoatUneet success fee</p>
-              <span className="text-sm text-blue-700">Payable when your boat sells</span>
+              <p className="fee-compare__label">BoatUneet success fee</p>
+              <span className="fee-compare__note text-sky-300">Payable only when your boat sells</span>
             </div>
-            <div className="fee-ledger__number" aria-label="2.5 percent">
+            <div className="fee-compare__number" aria-label="2.5 percent">
               <span data-count="2.5" aria-hidden="true">2.5</span>%
             </div>
           </div>
-          <div className="fee-ledger__row">
+          <div className="fee-compare__bar" aria-hidden="true">
+            <span data-fee-fill className="fee-compare__fill fee-compare__fill--blue" style={{ width: "25%" }} />
+          </div>
+
+          <div className="fee-compare__row">
             <div>
-              <p>Broker benchmark</p>
-              <span className="text-sm text-slate-500">Illustrative comparison</span>
+              <p className="fee-compare__label">Typical brokerage</p>
+              <span className="fee-compare__note">Illustrative 8–10% benchmark</span>
             </div>
-            <div className="fee-ledger__number fee-ledger__number--muted" aria-label="10 percent">
+            <div className="fee-compare__number fee-compare__number--muted" aria-label="10 percent">
               <span data-count="10" aria-hidden="true">10</span>%
             </div>
           </div>
-          <div className="fee-ledger__difference">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.15em] text-sky-300">The difference you keep</p>
-              <p className="mt-2 text-sm text-slate-300">On an illustrative €100,000 sale</p>
-            </div>
-            <strong>€7,500</strong>
+          <div className="fee-compare__bar" aria-hidden="true">
+            <span data-fee-fill className="fee-compare__fill fee-compare__fill--muted" style={{ width: "100%" }} />
           </div>
-          <p className="px-6 pb-5 pt-4 text-xs leading-5 text-slate-500 sm:px-8">
+
+          <p className="fee-compare__callout">
+            On a €100,000 sale, <strong>€7,500</strong> stays with you.
+          </p>
+          <p className="mt-5 text-xs leading-5 text-slate-400">
             Comparison uses a 10% brokerage benchmark. Actual rates vary. Buyer-broker, tax, legal, survey, escrow and other third-party costs may apply. Final terms are disclosed before you commit.
           </p>
         </div>
@@ -437,11 +415,11 @@ function PlanChapter() {
   return (
     <section id="plan" data-chapter className="chapter chapter--plan scroll-mt-0 text-white">
       <div className="chapter-inner flex flex-col justify-center">
-        <div className="grid items-end gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
+        <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-20">
           <div data-chapter-reveal>
-            <p className="chapter-kicker text-sky-300">03 · The 90-day plan</p>
-            <h2 className="chapter-title mt-4 text-white">A managed sale, from raw material to handover.</h2>
-            <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
+            <p className="chapter-kicker text-sky-300">— The 90-day plan</p>
+            <h2 className="chapter-title mt-5 text-white">A managed sale, from raw material to handover.</h2>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-300">
               Five minutes of review each week keeps the sale moving. We coordinate the work around you and keep every decision visible.
             </p>
           </div>
@@ -450,7 +428,7 @@ function PlanChapter() {
           </div>
         </div>
 
-        <ol data-chapter-reveal className="plan-steps mt-7">
+        <ol data-chapter-reveal className="plan-steps mt-16">
           {STEPS.map((step) => (
             <li key={step.n} className="plan-step">
               <span className="plan-step__dot" aria-hidden="true" />
@@ -459,11 +437,11 @@ function PlanChapter() {
                 <span className="text-xs text-slate-500">{step.time}</span>
               </div>
               <h3 className="mt-3 text-xl font-semibold">{step.title}</h3>
-              <p className="mt-2 text-[13px] leading-5 text-slate-400">{step.description}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-400">{step.description}</p>
             </li>
           ))}
         </ol>
-        <p className="plan-note mt-4 text-xs leading-5 text-slate-400">
+        <p className="plan-note mt-8 text-xs leading-5 text-slate-400">
           The 90-day plan is a structured sales program, not a guaranteed sale date. Timing depends on the vessel, market, price and buyer readiness.
         </p>
       </div>
@@ -474,9 +452,9 @@ function PlanChapter() {
 function TrustChapter() {
   return (
     <section id="trust" data-chapter className="chapter chapter--trust scroll-mt-0">
-      <div className="chapter-inner grid items-center gap-12 lg:grid-cols-[0.74fr_1.26fr] lg:gap-20">
+      <div className="chapter-inner grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
         <div data-chapter-reveal>
-          <p className="chapter-kicker">04 · Clarity and control</p>
+          <p className="chapter-kicker">— Clarity and control</p>
           <h2 className="chapter-title mt-4">Know what is happening, what comes next and what it costs.</h2>
           <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
             A premium process should reduce uncertainty—not ask you to surrender control. BoatUneet gives the owner one clear record from valuation to settlement.
@@ -494,7 +472,7 @@ function TrustChapter() {
                 <h3 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">{label}</h3>
                 <p className="mt-1 max-w-xl text-sm leading-6 text-slate-600">{text}</p>
               </div>
-              <ArrowRight className="feature-row__arrow" size={20} aria-hidden="true" />
+              <Check className="feature-row__arrow" size={20} weight="bold" aria-hidden="true" />
             </article>
           ))}
         </div>
@@ -503,15 +481,15 @@ function TrustChapter() {
   );
 }
 
-function QuestionsChapter({ status }: { status: Status }) {
+function QuestionsChapter() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
     <section id="questions" data-chapter className="chapter chapter--questions scroll-mt-0">
-      <div className="chapter-inner flex min-h-full flex-col">
-        <div className="grid items-start gap-12 lg:grid-cols-[0.86fr_1.14fr] lg:gap-20">
+      <div className="chapter-inner flex min-h-full flex-col justify-center">
+        <div className="grid items-center gap-12 lg:grid-cols-[0.86fr_1.14fr] lg:gap-20">
           <div data-chapter-reveal>
-            <p className="chapter-kicker">05 · Straight answers</p>
+            <p className="chapter-kicker">— Straight answers</p>
             <h2 className="chapter-title mt-4">The details should be as transparent as the dashboard.</h2>
             <div className="mt-8 border-t border-slate-200">
               {FAQS.map(({ question, answer }, index) => {
@@ -547,14 +525,14 @@ function QuestionsChapter({ status }: { status: Status }) {
             </div>
           </div>
 
-          <aside data-chapter-reveal className="final-cta">
+          <aside id="valuation" data-chapter-reveal className="final-cta scroll-mt-24">
             <div className="final-cta__intro">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-300">Early access</p>
-              <h2 className="final-cta__title">See whether BoatUneet fits your boat.</h2>
-              <p className="final-cta__copy">Join the early-access list. We&apos;ll email you at launch and when owner applications open.</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-300">Free valuation</p>
+              <h2 className="final-cta__title">Find out what your boat is worth today.</h2>
+              <p className="final-cta__copy">Leave your email and we&apos;ll reply with a few quick questions, then a market-informed price range for your boat — free, no obligation.</p>
             </div>
             <div className="final-cta__form">
-              <WaitlistForm dark status={status} />
+              <ValuationForm dark />
             </div>
           </aside>
         </div>
@@ -563,45 +541,55 @@ function QuestionsChapter({ status }: { status: Status }) {
   );
 }
 
-export default function ComingSoon({ status }: { status: Status }) {
+export default function ComingSoon() {
   const { root, active } = useChapterMotion();
 
   return (
     <main ref={root} id="main-content" className="chapter-page text-ink">
       <a href="#intro" className="skip-link">Skip to main content</a>
-      <Header status={status} active={active} />
+      <Header active={active} />
 
       <section id="intro" data-chapter className="chapter chapter--hero scroll-mt-0">
-        <Image
-          data-hero-image
-          src="/boatuneet-hero-marina.png"
-          alt="White motor yacht moored in a Mediterranean marina"
-          fill
-          preload
-          sizes="100vw"
-          className="hero-photo object-cover"
-        />
-        <div className="hero-wash" aria-hidden="true" />
-        <div className="chapter-inner relative z-10 flex min-h-full items-center pt-[88px]">
-          <div className="hero-copy max-w-[610px] py-14 lg:py-20">
-            <p data-hero-line className="mb-5 text-xs font-bold uppercase tracking-[0.16em] text-blue-700 lg:hidden">01 · Intro</p>
-            <h1 className="hero-heading font-semibold leading-[0.9] tracking-[-0.065em] text-ink">
-              <span data-hero-line className="block">Sell your boat.</span>
-              <span data-hero-line className="mt-3 block font-serif font-medium italic text-blue-600">Keep more of<br className="hidden sm:block" /> the price.</span>
+        <div data-hero-image className="absolute inset-0" aria-hidden="true">
+          {/* ponytail: installed shaders-react 0.0.80 dropped backgroundColor/wireframe;
+              single layer with distortion+swirl approximates the showcase look */}
+          <MeshGradient
+            className="absolute inset-0 h-full w-full"
+            colors={["#000000", "#071735", "#0d3dac", "#1559e7", "#38bdf8"]}
+            speed={0.3}
+            distortion={0.8}
+            swirl={0.6}
+          />
+        </div>
+        <div className="hero-cards" aria-hidden="true">
+          <div data-hero-line className="hero-cards__row">
+            {YACHT_CARDS.map((src) => (
+              <div key={src} className="hero-card">
+                <Image src={src} alt="" fill sizes="200px" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="chapter-inner pointer-events-none relative z-10 flex min-h-full items-center justify-center pt-[88px] pb-32 lg:pb-40">
+          <div className="hero-copy pointer-events-auto mx-auto max-w-[840px] py-10 text-center lg:py-14">
+            <p data-hero-line className="mb-5 text-xs font-bold uppercase tracking-[0.16em] text-sky-300 lg:hidden">— Intro</p>
+            <h1 className="hero-heading text-white">
+              <span data-hero-line className="hero-heading__strong block drop-shadow-2xl">Sell your boat.</span>
+              <span data-hero-line className="hero-heading__light hero-gradient-text mt-2 block sm:whitespace-nowrap">Keep more of the price.</span>
             </h1>
-            <p data-hero-line className="mt-7 max-w-xl text-base leading-7 text-slate-700 sm:text-lg">
-              BoatUneet prepares the listing, provides a market-informed price range, screens enquiries and coordinates the journey to closing—all in one managed 90-day sales plan, for a 2.5% success fee.
+            <p data-hero-line className="mx-auto mt-6 max-w-[800px] text-base font-light leading-7 text-white/70 sm:text-lg">
+              A managed 90-day sale — market-informed pricing, screened buyers and coordinated closing — for a 2.5% success fee instead of the typical 8–10% brokerage. Start with a free valuation.
             </p>
-            <ul data-hero-line className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-slate-800" aria-label="BoatUneet highlights">
-              {["No upfront service fee", "One transparent dashboard", "Support through closing"].map((item) => (
+            <ul data-hero-line className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm font-medium text-white/80" aria-label="BoatUneet highlights">
+              {["Free valuation range", "No upfront fee", "Pay 2.5% only when it sells"].map((item) => (
                 <li key={item} className="flex items-center gap-2">
-                  <Check size={16} weight="bold" className="text-blue-600" aria-hidden="true" />
+                  <Check size={16} weight="bold" className="text-sky-400" aria-hidden="true" />
                   {item}
                 </li>
               ))}
             </ul>
-            <div data-hero-line className="mt-7 max-w-xl">
-              <WaitlistForm compact dark={false} status={status} />
+            <div data-hero-line className="mx-auto mt-8 max-w-xl">
+              <ValuationForm compact dark />
             </div>
           </div>
         </div>
@@ -610,8 +598,7 @@ export default function ComingSoon({ status }: { status: Status }) {
       <FeeChapter />
       <PlanChapter />
       <TrustChapter />
-      <QuestionsChapter status={status} />
-      <ChapterDock active={active} />
+      <QuestionsChapter />
     </main>
   );
 }
