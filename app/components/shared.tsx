@@ -134,7 +134,7 @@ export function ValuationForm({
           placeholder="you@example.com"
           autoComplete="email"
           aria-describedby={compact ? undefined : noteId}
-          className={`h-14 flex-1 rounded-xl border px-5 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${t.input}`}
+          className={`h-14 w-full rounded-xl border px-5 text-base sm:flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${t.input}`}
         />
         <button
           type="submit"

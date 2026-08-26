@@ -916,6 +916,11 @@ body {
     font-size: clamp(2.5rem, 12vw, 3.8rem);
   }
 
+  /* Viewport-scaled so the strong line fits on one row down to 320px. */
+  .hero-heading {
+    font-size: clamp(2.2rem, 11.2vw, 3.4rem);
+  }
+
   .fee-compare__number {
     font-size: 4.2rem;
   }
