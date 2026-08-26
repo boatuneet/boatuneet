@@ -39,9 +39,11 @@ async function celebrate() {
 export function ValuationForm({
   dark,
   compact = false,
+  onButtonHover,
 }: {
   dark: boolean;
   compact?: boolean;
+  onButtonHover?: (hovering: boolean) => void;
 }) {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState(""); // honeypot
@@ -55,7 +57,7 @@ export function ValuationForm({
     ? {
         input:
           "bg-white/15 border-white/25 backdrop-blur-xl placeholder:text-white/60 focus:border-sky-300/70 text-white",
-        btn: "bg-sky-300 text-[#050a12] hover:bg-sky-200",
+        btn: "cta-button",
         done: "border-sky-300/30 bg-sky-300/10 text-white",
         sub: "text-neutral-400",
         strong: "text-white",
@@ -137,7 +139,9 @@ export function ValuationForm({
         <button
           type="submit"
           disabled={pending}
-          className={`h-14 cursor-pointer whitespace-nowrap rounded-xl px-7 text-sm font-semibold shadow-sm transition-[transform,box-shadow,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 motion-reduce:transform-none motion-reduce:transition-none ${t.btn}`}
+          onMouseEnter={() => onButtonHover?.(true)}
+          onMouseLeave={() => onButtonHover?.(false)}
+          className={`h-14 cursor-pointer whitespace-nowrap rounded-xl px-7 text-sm font-semibold shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${t.btn}`}
         >
           {pending ? "Sending…" : "Get my free valuation"}
         </button>

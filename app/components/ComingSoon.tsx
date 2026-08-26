@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
-  CaretDown,
   ChartLineUp,
   Check,
   FileText,
@@ -15,7 +14,7 @@ import {
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ValuationForm } from "./shared";
-import { MeshGradient } from "@paper-design/shaders-react";
+import { GL } from "./gl";
 
 const YACHT_CARDS = Array.from({ length: 7 }, (_, i) => `/cards/card-${i + 1}.png`);
 
@@ -71,8 +70,8 @@ const FEATURES = [
 
 const FAQS = [
   {
-    question: "What does the free valuation include?",
-    answer: "After you send your email, we ask a few quick questions about your boat — make, model, year, condition and location — and reply with a market-informed price range based on comparable listings and current demand. It's free, with no obligation to sell through BoatUneet.",
+    question: "What does the valuation include?",
+    answer: "We ask a few quick questions about your boat — make, model, year, condition and location — then reply with a market-informed price range based on comparable listings. Free, with no obligation.",
   },
   {
     question: "What does the 2.5% fee cover?",
@@ -482,60 +481,33 @@ function TrustChapter() {
 }
 
 function QuestionsChapter() {
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
-
   return (
     <section id="questions" data-chapter className="chapter chapter--questions scroll-mt-0">
       <div className="chapter-inner flex min-h-full flex-col justify-center">
-        <div className="grid items-center gap-12 lg:grid-cols-[0.86fr_1.14fr] lg:gap-20">
-          <div data-chapter-reveal>
-            <p className="chapter-kicker">— Straight answers</p>
-            <h2 className="chapter-title mt-4">The details should be as transparent as the dashboard.</h2>
-            <div className="mt-8 border-t border-slate-200">
-              {FAQS.map(({ question, answer }, index) => {
-                const isOpen = openFaq === index;
-                const triggerId = `faq-trigger-${index}`;
-                const panelId = `faq-panel-${index}`;
-
-                return (
-                  <div key={question} className={`faq-row ${isOpen ? "is-open" : ""}`}>
-                    <button
-                      id={triggerId}
-                      type="button"
-                      aria-expanded={isOpen}
-                      aria-controls={panelId}
-                      className="faq-row__trigger"
-                      onClick={() => setOpenFaq(isOpen ? null : index)}
-                    >
-                      {question}
-                      <CaretDown weight="bold" aria-hidden="true" />
-                    </button>
-                    <div
-                      id={panelId}
-                      role="region"
-                      aria-labelledby={triggerId}
-                      aria-hidden={!isOpen}
-                      className="faq-row__answer"
-                    >
-                      <div><p>{answer}</p></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <aside id="valuation" data-chapter-reveal className="final-cta scroll-mt-24">
-            <div className="final-cta__intro">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-300">Free valuation</p>
-              <h2 className="final-cta__title">Find out what your boat is worth today.</h2>
-              <p className="final-cta__copy">Leave your email and we&apos;ll reply with a few quick questions, then a market-informed price range for your boat — free, no obligation.</p>
-            </div>
-            <div className="final-cta__form">
-              <ValuationForm dark />
-            </div>
-          </aside>
+        <div data-chapter-reveal className="mx-auto max-w-4xl text-center">
+          <p className="chapter-kicker">— Straight answers</p>
+          <h2 className="chapter-title mx-auto mt-4">The details should be as transparent as the dashboard.</h2>
         </div>
+
+        <div data-chapter-reveal className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {FAQS.map(({ question, answer }) => (
+            <article key={question} className="faq-card text-left">
+              <h3 className="text-base font-semibold leading-6 text-slate-950">{question}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{answer}</p>
+            </article>
+          ))}
+        </div>
+
+        <aside id="valuation" data-chapter-reveal className="final-cta mt-10 grid w-full scroll-mt-24 items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-300">Free valuation</p>
+            <h2 className="final-cta__title">Find out what your boat is worth today.</h2>
+            <p className="final-cta__copy">Leave your email and we&apos;ll reply with a few quick questions, then a market-informed price range for your boat — free, no obligation.</p>
+          </div>
+          <div className="final-cta__form">
+            <ValuationForm compact dark />
+          </div>
+        </aside>
       </div>
     </section>
   );
@@ -543,6 +515,7 @@ function QuestionsChapter() {
 
 export default function ComingSoon() {
   const { root, active } = useChapterMotion();
+  const [ctaHovering, setCtaHovering] = useState(false);
 
   return (
     <main ref={root} id="main-content" className="chapter-page text-ink">
@@ -551,15 +524,7 @@ export default function ComingSoon() {
 
       <section id="intro" data-chapter className="chapter chapter--hero scroll-mt-0">
         <div data-hero-image className="absolute inset-0" aria-hidden="true">
-          {/* ponytail: installed shaders-react 0.0.80 dropped backgroundColor/wireframe;
-              single layer with distortion+swirl approximates the showcase look */}
-          <MeshGradient
-            className="absolute inset-0 h-full w-full"
-            colors={["#000000", "#071735", "#0d3dac", "#1559e7", "#38bdf8"]}
-            speed={0.3}
-            distortion={0.8}
-            swirl={0.6}
-          />
+          <GL hovering={ctaHovering} />
         </div>
         <div className="hero-cards" aria-hidden="true">
           <div data-hero-line className="hero-cards__row">
@@ -589,7 +554,7 @@ export default function ComingSoon() {
               ))}
             </ul>
             <div data-hero-line className="mx-auto mt-8 max-w-xl">
-              <ValuationForm compact dark />
+              <ValuationForm compact dark onButtonHover={setCtaHovering} />
             </div>
           </div>
         </div>
