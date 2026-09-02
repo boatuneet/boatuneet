@@ -331,6 +331,7 @@ function Header({ active }: { active: number }) {
               {item.label}
             </a>
           ))}
+          <a className="nav-link" href="/blog">Journal</a>
         </nav>
 
         <a
