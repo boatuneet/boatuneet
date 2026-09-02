@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 import {
   Geist,
   Fraunces,
@@ -52,6 +53,14 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <Analytics />
+        {/* Google Analytics (gtag.js) */}
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-3JRLWHZT3G" strategy="afterInteractive" />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-3JRLWHZT3G');`}
+        </Script>
       </body>
     </html>
   );
