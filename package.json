@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:db": "node supabase/tests/waitlist.test.mjs"
+    "test:db": "node supabase/tests/waitlist.test.mjs",
+    "test:blog": "node --experimental-strip-types --no-warnings lib/blog.test.mts"
   },
   "dependencies": {
     "@paper-design/shaders-react": "^0.0.80",

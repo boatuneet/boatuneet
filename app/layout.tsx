@@ -33,6 +33,7 @@ const brandSans = Montserrat({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://boatuneet.com"),
   title: "BoatUneet — Sell your boat. Keep more of the price.",
   description:
     "Get a free, market-informed valuation of your boat, then sell it through a managed 90-day plan with screened buyers and support through closing — for a 2.5% success fee.",
