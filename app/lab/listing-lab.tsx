@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
@@ -312,11 +313,18 @@ export default function ListingLab() {
         Skip to report
       </a>
       <aside className="ll-sidebar">
-        <a href="/lab" className="ll-brand">
-          <span className="ll-brand-mark">
-            <Anchor size={23} weight="bold" />
-          </span>{" "}
-          uneet<span className="ll-brand-dot">.</span>
+        <a href="/lab" className="ll-brand" aria-label="BoatUneet Listing Lab">
+          <Image
+            src="/boatuneet-mark.png"
+            alt=""
+            width={631}
+            height={240}
+            className="ll-brand-mark"
+          />
+          <span className="brand-wordmark">
+            <span className="brand-wordmark__boat">Boat</span>
+            <span className="brand-wordmark__uneet">Uneet</span>
+          </span>
         </a>
         <div className="ll-product">
           LISTING INTELLIGENCE <span>LAB</span>
