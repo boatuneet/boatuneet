@@ -1,3 +1,11 @@
+## Listing intelligence POC
+
+On branch `poc/listing-intelligence`, run `npm run dev:lab` and open **http://127.0.0.1:3100/lab**. The original launch page remains at `/`.
+
+See the [test walkthrough and limitations](docs/listing-lab/README.md), [investigation and plan](docs/listing-lab/PLAN.md), and [verification record](docs/listing-lab/QA.md).
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "dev:lab": "next dev --hostname 127.0.0.1 --port 3100",
+    "test:lab": "node --experimental-strip-types --test lib/listing-lab/*.test.mts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
