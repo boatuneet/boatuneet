@@ -55,6 +55,7 @@ import {
   syntheticCase,
 } from "@/lib/listing-lab/cases";
 import type { SearchLead } from "@/lib/listing-lab/search";
+import type { Candidate } from "@/lib/listing-lab/discover";
 
 type View =
   | "overview"
@@ -123,6 +124,7 @@ export default function ListingLab() {
     listing?: Listing;
     url?: string;
   } | null>(null);
+  const [autoSearch, setAutoSearch] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const workspace = workspaces.find((w) => w.id === activeId) ?? workspaces[0];
@@ -209,6 +211,7 @@ export default function ListingLab() {
     setWorkspaces((all) => all.map((w) => (w.id === workspace.id ? next : w)));
   }
   function selectWorkspace(id: string) {
+    setAutoSearch(false);
     setActiveId(id);
     setView("overview");
     setSelected(null);
@@ -216,22 +219,30 @@ export default function ListingLab() {
   }
   function openCase(kind: "research" | "synthetic" | "personal") {
     if (!loaded) return;
-    const existing = kind === "personal"
-      ? workspaces.find((w) => w.kind === "personal" && !w.referenceId)
-      : workspaces.find((w) => w.id === (kind === "research" ? "sunseeker-research" : "synthetic-axopar"));
+    const existing =
+      kind === "personal"
+        ? workspaces.find((w) => w.kind === "personal" && !w.referenceId)
+        : workspaces.find(
+            (w) =>
+              w.id ===
+              (kind === "research" ? "sunseeker-research" : "synthetic-axopar"),
+          );
     if (existing) {
       selectWorkspace(existing.id);
       return;
     }
     if (workspaces.length >= 12) {
-      setNotice("This browser already has 12 reports. Export your reports and use another browser profile for additional pilot cases.");
+      setNotice(
+        "This browser already has 12 reports. Export your reports and use another browser profile for additional pilot cases.",
+      );
       return;
     }
-    const next = kind === "research"
-      ? researchCase()
-      : kind === "synthetic"
-        ? syntheticCase()
-        : { ...blankWorkspace(), id: `personal-${crypto.randomUUID()}` };
+    const next =
+      kind === "research"
+        ? researchCase()
+        : kind === "synthetic"
+          ? syntheticCase()
+          : { ...blankWorkspace(), id: `personal-${crypto.randomUUID()}` };
     setWorkspaces((all) => [...all, next]);
     selectWorkspace(next.id);
   }
@@ -248,7 +259,7 @@ export default function ListingLab() {
           : "Decision undone. Evidence rules apply again.",
     );
   }
-  function saveListing(listing: Listing) {
+  function saveListing(listing: Listing, findMore = false) {
     const duplicate = workspace.listings.find(
       (l) =>
         l.id !== listing.id &&
@@ -280,7 +291,8 @@ export default function ListingLab() {
     change(next);
     setEditor(null);
     setSelected(listing.id);
-    setView("advertisements");
+    setView(findMore ? "discover" : "advertisements");
+    setAutoSearch(findMore);
     setFilter("all");
     setNotice(
       "Observation saved. Matching and findings have been recalculated.",
@@ -396,7 +408,11 @@ export default function ListingLab() {
               <FileText size={16} />
               <span>
                 {w.referenceId ? w.name : "Your own boat"}
-                <small>{w.referenceId ? `${w.listings.length} saved advertisement${w.listings.length === 1 ? "" : "s"}` : "Add your first listing"}</small>
+                <small>
+                  {w.referenceId
+                    ? `${w.listings.length} saved advertisement${w.listings.length === 1 ? "" : "s"}`
+                    : "Add your first listing"}
+                </small>
               </span>
             </button>
           ))}
@@ -407,7 +423,9 @@ export default function ListingLab() {
         >
           <Plus size={16} />
           <span>
-            {workspaces.some((w) => w.kind === "personal") ? "Add another boat" : "Your own boat"}
+            {workspaces.some((w) => w.kind === "personal")
+              ? "Add another boat"
+              : "Your own boat"}
             <small>Start with a listing</small>
           </span>
         </button>
@@ -518,8 +536,8 @@ export default function ListingLab() {
                 ) : (
                   <>
                     <strong>Your observations</strong> · Saved locally in this
-                    browser. Websites are not automatically fetched or
-                    monitored.
+                    browser. URL reading and searches run only when requested;
+                    background monitoring is not enabled.
                   </>
                 )}
               </span>
@@ -872,6 +890,7 @@ export default function ListingLab() {
             <Discovery
               key={workspace.id}
               reference={reference}
+              autoSearch={autoSearch}
               onAdd={(url) => setEditor({ url })}
             />
           )}
@@ -1276,7 +1295,7 @@ function ListingEditor({
   reference: boolean;
   synthetic: boolean;
   onClose: () => void;
-  onSave: (l: Listing) => void;
+  onSave: (l: Listing, findMore?: boolean) => void;
 }) {
   const [url, setUrl] = useState(initial?.url ?? initialUrl ?? "");
   const [data, setData] = useState<BoatFacts>(initial?.data ?? emptyFacts());
@@ -1290,6 +1309,49 @@ function ListingEditor({
   );
   const [error, setError] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [reading, setReading] = useState(false);
+  const [findMore, setFindMore] = useState(reference && !initial);
+  const extraction = useRef<AbortController | null>(null);
+  useEffect(() => () => extraction.current?.abort(), []);
+  async function readUrl() {
+    extraction.current?.abort();
+    const controller = new AbortController();
+    extraction.current = controller;
+    setReading(true);
+    setWarnings([]);
+    setError("");
+    try {
+      const response = await fetch("/api/lab/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+        signal: controller.signal,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      if (controller.signal.aborted) return;
+      setData(result.data);
+      setWarnings(result.warnings);
+      setObserved(result.fetchedAt.slice(0, 10));
+      setStatus("unknown");
+      setNote(
+        `Draft from ${result.source} accessed ${result.fetchedAt} from ${result.sourceUrl}. ${result.evidence.join("; ")}. Reviewed by user before saving; source claims unverified.`,
+      );
+    } catch (e) {
+      if (!controller.signal.aborted)
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Could not read this listing. Enter its details below.",
+        );
+    } finally {
+      if (!controller.signal.aborted) setReading(false);
+    }
+  }
+  useEffect(() => {
+    if (initialUrl && !initial) void readUrl();
+  }, []);
+
   function field<K extends keyof BoatFacts>(key: K, value: BoatFacts[K]) {
     setData((old) => ({ ...old, [key]: value }));
   }
@@ -1313,7 +1375,7 @@ function ListingEditor({
         note,
         history: initial?.history ?? [],
       });
-      onSave(listing);
+      onSave(listing, findMore);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Check the observation details.",
@@ -1342,8 +1404,9 @@ function ListingEditor({
     >
       <form onSubmit={submit} className="ll-editor">
         <p className="ll-muted">
-          The URL is a source reference. This POC does not fetch the page
-          automatically. Paste or enter the facts you have observed.
+          Paste a listing URL and read its details into a draft. Review the
+          fields before saving. Some websites block access or require manual
+          entry.
         </p>
         <label className="ll-field">
           Listing URL
@@ -1353,12 +1416,35 @@ function ListingEditor({
             readOnly={Boolean(initial)}
             type="url"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => {
+              extraction.current?.abort();
+              setReading(false);
+              if (note.startsWith("Draft from ")) {
+                setData(emptyFacts());
+                setNote("");
+                setWarnings([]);
+              }
+              setUrl(e.target.value);
+            }}
             placeholder="https://…"
             maxLength={2000}
           />
         </label>
-        <details className="ll-paste" open={!initial}>
+        <button
+          type="button"
+          className="ll-btn ll-btn-secondary"
+          disabled={reading || !url.trim()}
+          onClick={readUrl}
+        >
+          {reading ? "Reading listing…" : "Read details from URL"}{" "}
+          <DownloadSimple size={16} />
+        </button>
+        <p className="ll-help" role="status">
+          {reading
+            ? "Reading the public page or an exact search-index result. This can take up to 25 seconds."
+            : "Reading replaces the draft fields. Missing facts remain unknown; access restrictions are not bypassed."}
+        </p>
+        <details className="ll-paste" open={false}>
           <summary>Paste listing details to fill a draft</summary>
           <p className="ll-help">
             Works best with labelled lines such as “Make: Sunseeker”, “Model: 76
@@ -1386,12 +1472,12 @@ function ListingEditor({
           >
             Extract draft fields <ArrowRight size={15} />
           </button>
-          {warnings.map((w) => (
-            <p className="ll-help" key={w}>
-              {w}
-            </p>
-          ))}
         </details>
+        {warnings.map((w) => (
+          <p className="ll-help" key={w}>
+            {w}
+          </p>
+        ))}
         <div className="ll-form-grid">
           {textFields.map(([key, label]) => (
             <label className="ll-field" key={key}>
@@ -1570,6 +1656,19 @@ function ListingEditor({
             {error}
           </div>
         )}
+        {reference && (
+          <label
+            className="ll-help"
+            style={{ display: "flex", gap: 8, alignItems: "center" }}
+          >
+            <input
+              type="checkbox"
+              checked={findMore}
+              onChange={(e) => setFindMore(e.target.checked)}
+            />
+            Search for other listings after saving these details
+          </label>
+        )}
         <div className="ll-form-actions">
           <button
             type="button"
@@ -1578,8 +1677,16 @@ function ListingEditor({
           >
             Cancel
           </button>
-          <button className="ll-btn ll-btn-primary" type="submit">
-            {initial ? "Save new observation" : "Save advertisement"}
+          <button
+            className="ll-btn ll-btn-primary"
+            type="submit"
+            disabled={reading}
+          >
+            {initial
+              ? "Save new observation"
+              : findMore
+                ? "Save & find listings"
+                : "Save advertisement"}
             <Check size={17} />
           </button>
         </div>
@@ -1591,30 +1698,76 @@ function ListingEditor({
 function Discovery({
   reference,
   onAdd,
+  autoSearch = false,
 }: {
   reference: Listing;
   onAdd: (url: string) => void;
+  autoSearch?: boolean;
 }) {
   const queries = discoveryQueries(reference);
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [provider, setProvider] = useState("");
   const [query, setQuery] = useState(queries[0]?.query ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [leads, setLeads] = useState<SearchLead[] | null>(null);
+  const [leads, setLeads] = useState<
+    (SearchLead & Partial<Candidate>)[] | null
+  >(null);
+  const [searchedAt, setSearchedAt] = useState("");
+  const [partial, setPartial] = useState(false);
   const controller = useRef<AbortController | null>(null);
+  const started = useRef(false);
+  async function search(automatic = true) {
+    controller.current?.abort();
+    const current = new AbortController();
+    controller.current = current;
+    setBusy(true);
+    setError("");
+    setLeads(null);
+    try {
+      const response = await fetch("/api/lab/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          automatic
+            ? { facts: reference.data, referenceUrl: reference.url }
+            : { query },
+        ),
+        signal: current.signal,
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error);
+      if (current.signal.aborted) return;
+      setLeads(body.leads);
+      setSearchedAt(body.searchedAt);
+      setPartial(Boolean(body.partial));
+      setProvider(body.provider);
+    } catch (e) {
+      if (!current.signal.aborted)
+        setError(
+          e instanceof Error ? e.message : "Search failed. Please retry.",
+        );
+    } finally {
+      if (!current.signal.aborted) setBusy(false);
+    }
+  }
   useEffect(() => {
     let active = true;
     fetch("/api/lab/search")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((r) => {
-        if (active) setConnected(Boolean(r.connected));
+      .then((r) => r.json())
+      .then((body) => {
+        if (!active) return;
+        setConnected(Boolean(body.connected));
+        setProvider(body.provider ?? "");
+        if (autoSearch && body.connected && !started.current) {
+          started.current = true;
+          void search();
+        }
       })
       .catch(() => {
         if (active) {
           setConnected(false);
-          setError(
-            "Could not check the search connection. Guided searches still work.",
-          );
+          setError("Could not check the search connection. Please reload.");
         }
       });
     return () => {
@@ -1622,45 +1775,137 @@ function Discovery({
       controller.current?.abort();
     };
   }, []);
-  async function search(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    setLeads(null);
-    controller.current = new AbortController();
-    try {
-      const response = await fetch("/api/lab/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-        signal: controller.current.signal,
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error);
-      setLeads(body.leads);
-    } catch (e) {
-      if (!(e instanceof DOMException && e.name === "AbortError"))
-        setError(
-          e instanceof Error ? e.message : "Search failed. Please try again.",
-        );
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <div className="ll-discovery">
       <section className="ll-panel">
         <div className="ll-section-heading">
           <div>
-            <div className="ll-eyebrow">EXPAND YOUR EVIDENCE</div>
-            <h2>Look beyond the first listing.</h2>
+            <div className="ll-eyebrow">FIND OTHER ADVERTISEMENTS</div>
+            <h2>Search for your boat.</h2>
             <p>
-              Open a targeted search, review the source, then add an observation
-              to your report.
+              Search using your saved make, model, year and identifying details.
+              Results are candidates, not confirmed copies of your boat.
             </p>
           </div>
-          <MagnifyingGlass size={28} />
+          <Badge tone={connected ? "teal" : "neutral"}>
+            {connected === null
+              ? "Checking connection"
+              : connected
+                ? `${provider} connected`
+                : "Search not connected"}
+          </Badge>
         </div>
+        {connected === false && (
+          <div className="ll-connection-note">
+            <Info size={22} />
+            <div>
+              <strong>Live search needs a provider connection.</strong>
+              <p>
+                The site owner must connect a search API before this button can
+                return web results. Your reference is saved. Guided searches
+                below still work.
+              </p>
+            </div>
+          </div>
+        )}
+        <button
+          className="ll-btn ll-btn-primary"
+          disabled={!connected || busy}
+          onClick={() => search()}
+        >
+          {busy ? "Searching for candidates…" : "Find matching listings"}
+          <MagnifyingGlass size={18} />
+        </button>
+        {busy && (
+          <p role="status" className="ll-help">
+            Searching the web index with up to three targeted queries…
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="ll-alert">
+            {error}
+          </p>
+        )}
+        {leads && (
+          <>
+            <p className="ll-help">
+              {leads.length} candidate results · searched{" "}
+              {new Date(searchedAt).toLocaleString()} · {provider}. Search
+              relevance is not proof of vessel identity.
+            </p>
+            {partial && (
+              <p className="ll-alert">
+                Some queries failed. These results are incomplete; you can
+                retry.
+              </p>
+            )}
+            {leads.length ? (
+              <div className="ll-search-results">
+                {leads.map((lead) => (
+                  <article key={lead.url}>
+                    <External url={lead.url}>{lead.title}</External>
+                    <p>{lead.description}</p>
+                    <p className="ll-help">
+                      {lead.signals?.length
+                        ? lead.signals.join(" · ")
+                        : "No identifying signals confirmed in the snippet"}
+                    </p>
+                    <button
+                      className="ll-text-button"
+                      onClick={() => onAdd(lead.url)}
+                    >
+                      Read & review this candidate <ArrowRight size={16} />
+                    </button>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="ll-empty">
+                <h3>No indexed candidates found</h3>
+                <p>
+                  This does not mean there are no other listings. Edit your
+                  query or try the guided searches.
+                </p>
+              </div>
+            )}
+            <p className="ll-help">
+              Candidates are temporary until you review and save them. Their
+              details are read from the source when selected.
+            </p>
+          </>
+        )}
+        <details className="ll-paste">
+          <summary>Adjust the search query</summary>
+          <form
+            className="ll-search-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void search(false);
+            }}
+          >
+            <label className="ll-field">
+              Search query
+              <input
+                value={query}
+                maxLength={400}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <button
+              className="ll-btn ll-btn-secondary"
+              disabled={!connected || busy || !query.trim()}
+            >
+              Search web
+            </button>
+          </form>
+        </details>
+      </section>
+      <section className="ll-panel">
+        <h2>Search directly on the web</h2>
+        <p>
+          Use these if you want to explore further or live search is
+          unavailable.
+        </p>
         <div className="ll-query-grid">
           {queries.map((q) => (
             <a
@@ -1679,99 +1924,6 @@ function Discovery({
             </a>
           ))}
         </div>
-        <p className="ll-help">
-          A search result is a lead, not a verified advertisement. Search
-          engines can miss listings or retain pages that have changed.
-        </p>
-      </section>
-      <section className="ll-panel">
-        <div className="ll-section-heading">
-          <div>
-            <h2>Search inside the workspace</h2>
-            <p>
-              Optional indexed-web discovery via Brave Search. Results are not
-              saved automatically.
-            </p>
-          </div>
-          <Badge tone={connected ? "teal" : "neutral"}>
-            {connected === null
-              ? "Checking connection"
-              : connected
-                ? "Connected"
-                : "Not connected"}
-          </Badge>
-        </div>
-        {connected === false && (
-          <div className="ll-connection-note">
-            <Info size={22} />
-            <div>
-              <strong>No search credential is configured.</strong>
-              <p>
-                The guided searches above work now. A developer can enable
-                in-app discovery with the server-side Brave credential described
-                in the project README. This does not enable marketplace
-                crawling.
-              </p>
-            </div>
-          </div>
-        )}
-        <form onSubmit={search} className="ll-search-form">
-          <label className="ll-field">
-            Search query
-            <input
-              value={query}
-              maxLength={400}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
-          <button
-            className="ll-btn ll-btn-primary"
-            disabled={!connected || busy || !query.trim()}
-          >
-            {busy ? "Searching…" : "Search web"}
-            <MagnifyingGlass size={17} />
-          </button>
-        </form>
-        {busy && (
-          <p role="status" className="ll-muted">
-            Searching the web index. Current listing availability will still
-            need checking.
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="ll-alert">
-            {error}
-          </p>
-        )}
-        {leads &&
-          (leads.length ? (
-            <div className="ll-search-results">
-              {leads.map((lead) => (
-                <article key={lead.url}>
-                  <External url={lead.url}>{lead.title}</External>
-                  <p>{lead.description}</p>
-                  <button
-                    className="ll-text-button"
-                    onClick={() => onAdd(lead.url)}
-                  >
-                    Add my observation of this source <Plus size={15} />
-                  </button>
-                </article>
-              ))}
-              <p className="ll-help">
-                Web results provided by Brave Search. These transient leads
-                disappear when you leave this view.
-              </p>
-            </div>
-          ) : (
-            <div className="ll-empty">
-              <h3>No indexed results returned</h3>
-              <p>
-                This does not establish that no advertisements exist. Try
-                broader terms or another guided search.
-              </p>
-            </div>
-          ))}
       </section>
     </div>
   );

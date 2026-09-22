@@ -47,3 +47,14 @@ All of the interaction checks above passed through the Codex in-app browser. The
 - New boat reports receive independent IDs, reuse an existing empty draft, and respect the 12-report limit.
 - Browser check: saved Princess V50, created another empty report, reloaded, and reopened Princess V50 with its advertisement intact.
 - Production build and TypeScript passed.
+
+## URL-to-discovery flow — 22 September 2026
+
+- Added direct URL extraction and optional exact-URL index fallback; blocked access is not bypassed.
+- Live source check: Next Generation Yachting / Miami yields Sunseeker 76 Yacht, 2021, reported HIN GBXSK07255B020, 700 hours, MAN V12-1550, Miami, displayed USD price, and fractional basis. The current price differs from the original dated seed; seed data was not overwritten.
+- YachtWorld direct access returns a controlled failure with manual-entry fallback.
+- Browser verification: read the broker URL, review fields, save into a personal report and navigate to discovery with explicit missing-provider state.
+- Provider responses, ranking, duplicate/reference filtering, partial/all-query failures, malformed data, SSRF address checks and API origin/body limits are covered by automated tests.
+- No live paid provider call is claimed; configuring a real provider key and testing candidate quality remain required.
+
+- Final verification: 72 tests pass; production build/TypeScript pass.
