@@ -208,19 +208,32 @@ export default function ListingLab() {
   function change(next: Workspace) {
     setWorkspaces((all) => all.map((w) => (w.id === workspace.id ? next : w)));
   }
-  function openCase(kind: "research" | "synthetic" | "personal") {
-    const next =
-      kind === "research"
-        ? researchCase()
-        : kind === "synthetic"
-          ? syntheticCase()
-          : blankWorkspace();
-    if (!workspaces.some((w) => w.id === next.id))
-      setWorkspaces((all) => [...all, next]);
-    setActiveId(next.id);
+  function selectWorkspace(id: string) {
+    setActiveId(id);
     setView("overview");
     setSelected(null);
     setFilter("all");
+  }
+  function openCase(kind: "research" | "synthetic" | "personal") {
+    if (!loaded) return;
+    const existing = kind === "personal"
+      ? workspaces.find((w) => w.kind === "personal" && !w.referenceId)
+      : workspaces.find((w) => w.id === (kind === "research" ? "sunseeker-research" : "synthetic-axopar"));
+    if (existing) {
+      selectWorkspace(existing.id);
+      return;
+    }
+    if (workspaces.length >= 12) {
+      setNotice("This browser already has 12 reports. Export your reports and use another browser profile for additional pilot cases.");
+      return;
+    }
+    const next = kind === "research"
+      ? researchCase()
+      : kind === "synthetic"
+        ? syntheticCase()
+        : { ...blankWorkspace(), id: `personal-${crypto.randomUUID()}` };
+    setWorkspaces((all) => [...all, next]);
+    selectWorkspace(next.id);
   }
   function decide(id: string, decision?: Decision) {
     const decisions = { ...workspace.decisions };
@@ -370,31 +383,34 @@ export default function ListingLab() {
             Axopar 37<small>Synthetic stress test</small>
           </span>
         </button>
-        <button
-          className={`ll-case ${workspace.id === "personal" ? "active" : ""}`}
-          onClick={() => openCase("personal")}
-        >
-          <Plus size={16} />
-          <span>
-            Your own boat<small>Start with a listing</small>
-          </span>
-        </button>
+        <div className="ll-nav-label">YOUR REPORTS</div>
         {workspaces
-          .filter((w) => w.id.startsWith("import-"))
+          .filter((w) => w.kind === "personal" || w.id.startsWith("import-"))
           .map((w) => (
             <button
               key={w.id}
               className={`ll-case ${workspace.id === w.id ? "active" : ""}`}
-              onClick={() => {
-                setActiveId(w.id);
-                setView("overview");
-                setSelected(null);
-              }}
+              aria-current={workspace.id === w.id ? "page" : undefined}
+              onClick={() => selectWorkspace(w.id)}
             >
               <FileText size={16} />
-              <span>{w.name}</span>
+              <span>
+                {w.referenceId ? w.name : "Your own boat"}
+                <small>{w.referenceId ? `${w.listings.length} saved advertisement${w.listings.length === 1 ? "" : "s"}` : "Add your first listing"}</small>
+              </span>
             </button>
           ))}
+        <button
+          className="ll-case"
+          disabled={!loaded}
+          onClick={() => openCase("personal")}
+        >
+          <Plus size={16} />
+          <span>
+            {workspaces.some((w) => w.kind === "personal") ? "Add another boat" : "Your own boat"}
+            <small>Start with a listing</small>
+          </span>
+        </button>
         <div className="ll-sidebar-bottom">
           <button
             className={`ll-nav-item ${view === "experiment" ? "active" : ""}`}

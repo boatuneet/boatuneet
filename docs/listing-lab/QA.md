@@ -40,3 +40,10 @@ All of the interaction checks above passed through the Codex in-app browser. The
 - No available Brave credential: successful live-provider access is unverified. Mocked provider responses and the real disconnected endpoint are tested.
 - No marketplace agreements/feed credentials: automated cross-marketplace discovery, completeness, availability and refresh cadence are unverified and are not claimed in the UI.
 - No owner-confirmed physical identity for the supplied Sunseeker beyond its reference URL. Research candidates remain provisional.
+
+## Sidebar report fix — 22 September 2026
+
+- Personal reports now appear by name, including the legacy `personal` workspace; imported reports remain visible. Storage format and key are unchanged.
+- New boat reports receive independent IDs, reuse an existing empty draft, and respect the 12-report limit.
+- Browser check: saved Princess V50, created another empty report, reloaded, and reopened Princess V50 with its advertisement intact.
+- Production build and TypeScript passed.

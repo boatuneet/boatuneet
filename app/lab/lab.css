@@ -166,6 +166,10 @@
   min-height: 58px;
   font-size: 12px;
 }
+.ll-case > span:not(.ll-case-dot) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .ll-case.active {
   background: #24324a;
 }

@@ -1,6 +1,6 @@
 # Try UNEET Listing Lab
 
-This is a working **listing audit POC**, not a production boat search engine. It lives at `/lab` on branch `poc/listing-intelligence`. The original launch page stays at `/`.
+This is a working **listing audit POC**, not a production boat search engine. It lives at `/lab` on `main` (originally developed on `poc/listing-intelligence`). The original launch page stays at `/`.
 
 ## Start locally
 
@@ -28,7 +28,7 @@ Stop the dev server before starting production on the same port. Requires Node 2
 2. **Advertisements → Next Generation Yachting / Miami.** Inspect its reported HIN and supporting details. That HIN is not known on the reference. Link it manually and watch the counts change; undo the decision to restore the evidence-only result. The Nice and Aventura advertisements remain separate until reviewed.
 3. **Axopar 37 → Boat report.** This is synthetic. Two matching reported HINs expose a EUR 16,000 asking-price difference and conflicting engine hours. A lookalike with a different HIN stays excluded. A similar boat without a HIN stays unconfirmed.
 4. **Edit the synthetic linked advertisement.** Change price from 305000 to 289000 and hours from 190 to 240. Save. The corresponding discrepancies disappear; Observation history retains the previous values. Change them back to repeat the test.
-5. **Your own boat.** Add a reference URL and paste labelled details using the example below. Review the extracted fields, especially currency and offer basis, before saving. Add another advertisement with a different URL. Use the guided searches under Find more listings to find candidates externally, then record what you observed.
+5. **Your own boat.** Saved boats appear by name under **Your reports** in the sidebar. **Add another boat** starts a separate report; an unfinished empty report is reused. Add a reference URL and paste labelled details using the example below. Review the extracted fields, especially currency and offer basis, before saving. Add another advertisement with a different URL. Use the guided searches under Find more listings to find candidates externally, then record what you observed.
 6. **Export / Import.** Export JSON, then import it through the footer. Import creates a separate copy rather than overwriting the report. CSV exports flat observations; browser print can save the overview to PDF. A [synthetic import example](../../public/lab/example-import.json) is also available from the export dialog.
 7. **About this experiment.** Review the four product directions and record usefulness / intended next action. Feedback stays local and is included in JSON exports. No messages are sent.
 
