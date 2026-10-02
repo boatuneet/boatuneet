@@ -191,6 +191,18 @@ body {
   max-width: 600px;
 }
 
+/* Left-aligned beside the yacht: one line per phrase, as in the design. */
+@media (min-width: 1024px) {
+  .hero-copy {
+    max-width: min(720px, 48vw);
+  }
+
+  .hero-layout .hero-heading {
+    font-size: clamp(3rem, 5.2vw, 6rem);
+    white-space: nowrap;
+  }
+}
+
 .hero-lede {
   max-width: 520px;
   margin-top: 22px;

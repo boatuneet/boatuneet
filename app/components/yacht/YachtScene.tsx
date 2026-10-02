@@ -2,12 +2,13 @@
 
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { buildYacht } from "./geometry";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { YACHT_BOX, YACHT_KEYS, buildStars, buildYacht, type YachtCloud } from "./geometry";
 
-const BASE_ROT_Y = -2.56; // bow toward the viewer and the copy on the left
-const BASE_ROT_X = 0.26; // tipped toward the camera: more deck, bow lower
-const SHIP_BOX = new THREE.Box3(new THREE.Vector3(-3.4, -0.45, -1.1), new THREE.Vector3(3.25, 2.45, 1.1));
+/** Pose fitted to the design mockup (1667×943) by projecting YACHT_KEYS onto
+ *  where the mockup draws them: bow low toward the copy, stern running off
+ *  the top right. Rotation order ZXY = yaw, then tilt, then roll. */
+const POSE = { fov: 44.07, yaw: -2.1201, tilt: 0.5324, roll: 0.0085, dist: 5.471, dy: 0.0277 };
 
 const vertexShader = /* glsl */ `
   uniform float uTime;
@@ -21,6 +22,7 @@ const vertexShader = /* glsl */ `
   uniform float uPixelRatio;
 
   attribute vec3 color;
+  attribute vec3 aNormal;
   attribute float aSize;
   attribute float aSeed;
   attribute float aKind;
@@ -36,7 +38,7 @@ const vertexShader = /* glsl */ `
     vec3 p = position;
 
     // Gentle shimmer so the cloud never looks frozen.
-    p += hash3(aSeed) * 0.012 * sin(uTime * 1.3 + aSeed * 6.2831);
+    p += hash3(aSeed) * 0.006 * sin(uTime * 1.3 + aSeed * 6.2831);
 
     // Scatter: each particle flies along its own direction, staggered by seed.
     float s = clamp(uScatter * 1.3 - fract(aSeed * 3.7) * 0.3, 0.0, 1.0);
@@ -45,6 +47,14 @@ const vertexShader = /* glsl */ `
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     vec4 clip = projectionMatrix * mv;
+
+    // Fade surfaces that face away from the camera, so the far hull side and
+    // inner walls don't clutter the near side. Lines and dust have no normal.
+    float facing = 1.0;
+    if (dot(aNormal, aNormal) > 0.0) {
+      vec3 n = normalize(normalMatrix * aNormal);
+      facing = mix(0.08, 1.0, smoothstep(-0.2, 0.3, dot(n, normalize(-mv.xyz))));
+    }
 
     // Cursor bulge in screen space: a magnifier lens over the boat. The push
     // grows with distance from the cursor (zero at its centre), so points
@@ -58,10 +68,10 @@ const vertexShader = /* glsl */ `
     clip.xy = ndc * clip.w;
     gl_Position = clip;
 
-    float twinkle = 0.78 + 0.22 * sin(uTime * (1.4 + fract(aSeed * 5.3) * 2.6) + aSeed * 40.0);
+    float twinkle = 0.8 + 0.2 * sin(uTime * (1.4 + fract(aSeed * 5.3) * 2.6) + aSeed * 40.0);
     gl_PointSize = uSize * aSize * uPixelRatio * (1.0 + push * 0.9 + s * 0.6) / -mv.z;
     vColor = color * twinkle * uGlow * (1.0 + push * 0.7);
-    vAlpha = (1.0 - s) * (1.0 - uFade);
+    vAlpha = (1.0 - s) * (1.0 - uFade) * facing;
   }
 `;
 
@@ -72,29 +82,84 @@ const fragmentShader = /* glsl */ `
   void main() {
     float d = length(gl_PointCoord - 0.5);
     if (d > 0.5) discard;
-    // Gaussian falloff: a bright core with a soft halo, so dense areas glow.
-    float a = exp(-d * d * 16.0) * vAlpha;
+    // Gaussian falloff: a crisp core with a soft halo, so dense lines glow.
+    float a = exp(-d * d * 20.0) * vAlpha;
     gl_FragColor = vec4(vColor * a, a);
   }
 `;
 
 type Pointer = { x: number; y: number; inside: boolean };
 
+function toGeometry(cloud: YachtCloud) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(cloud.positions, 3));
+  g.setAttribute("color", new THREE.BufferAttribute(cloud.colors, 3));
+  g.setAttribute("aNormal", new THREE.BufferAttribute(cloud.normals, 3));
+  g.setAttribute("aSize", new THREE.BufferAttribute(cloud.sizes, 1));
+  g.setAttribute("aSeed", new THREE.BufferAttribute(cloud.seeds, 1));
+  g.setAttribute("aKind", new THREE.BufferAttribute(cloud.kinds, 1));
+  return g;
+}
+
+const BOX_CORNERS = Array.from({ length: 8 }, (_, i) =>
+  new THREE.Vector3(
+    i & 1 ? YACHT_BOX.max[0] : YACHT_BOX.min[0],
+    i & 2 ? YACHT_BOX.max[1] : YACHT_BOX.min[1],
+    i & 4 ? YACHT_BOX.max[2] : YACHT_BOX.min[2],
+  ),
+);
+
+function poseMatrix(dist: number) {
+  const o = new THREE.Object3D();
+  o.rotation.order = "ZXY";
+  o.rotation.set(POSE.tilt, POSE.yaw, POSE.roll);
+  o.position.set(0, 0, -dist);
+  o.updateMatrixWorld();
+  return o.matrixWorld;
+}
+
+/** Desktop (copy beside the boat): the fitted close-up, with the bow tip
+ *  where the mockup puts it (46.5% across) but never under the copy, whose
+ *  column ends ~620px into the centred 1480px content box. Smaller screens
+ *  (boat above the copy): the whole boat, centred and fitted. */
+function frame(width: number, height: number, closeUp: boolean) {
+  const cam = new THREE.PerspectiveCamera(POSE.fov, width / height, 0.1, 100);
+  cam.updateMatrixWorld();
+  const v = new THREE.Vector3();
+
+  if (closeUp) {
+    const anchorPx = 0.465 * width;
+    const bowPx = Math.max(anchorPx, Math.max(0, (width - 1480) / 2) + 668);
+    // When the copy pushes the bow right, shrink the boat so the same crop
+    // fits the narrower space, and keep the bow at its fitted height.
+    const dist = (POSE.dist * (width - anchorPx)) / (width - bowPx);
+    const fitted = v.set(...YACHT_KEYS.bow).applyMatrix4(poseMatrix(POSE.dist)).project(cam).y;
+    const bow = v.set(...YACHT_KEYS.bow).applyMatrix4(poseMatrix(dist)).project(cam);
+    return { dist, dx: (bowPx / width) * 2 - 1 - bow.x, dy: POSE.dy + fitted - bow.y };
+  }
+
+  let dist = 12;
+  let box = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  for (let i = 0; i < 4; i++) {
+    const m = poseMatrix(dist);
+    box = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+    for (const c of BOX_CORNERS) {
+      v.copy(c).applyMatrix4(m).project(cam);
+      box = { minX: Math.min(box.minX, v.x), maxX: Math.max(box.maxX, v.x), minY: Math.min(box.minY, v.y), maxY: Math.max(box.maxY, v.y) };
+    }
+    // The box is loose (its corners overshoot the hull), so let it overflow.
+    dist *= Math.max((box.maxX - box.minX) / 2.3, (box.maxY - box.minY) / 2.1);
+  }
+  return { dist, dx: -(box.minX + box.maxX) / 2, dy: -(box.minY + box.maxY) / 2 };
+}
+
 function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObject<Pointer>; reduce: boolean }) {
-  const group = useRef<THREE.Group>(null);
+  const lean = useRef<THREE.Group>(null);
+  const body = useRef<THREE.Group>(null);
   const { camera, size, gl } = useThree();
 
-  const geometry = useMemo(() => {
-    const cloud = buildYacht();
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(cloud.positions, 3));
-    g.setAttribute("color", new THREE.BufferAttribute(cloud.colors, 3));
-    g.setAttribute("aSize", new THREE.BufferAttribute(cloud.sizes, 1));
-    g.setAttribute("aSeed", new THREE.BufferAttribute(cloud.seeds, 1));
-    g.setAttribute("aKind", new THREE.BufferAttribute(cloud.kinds, 1));
-    return g;
-  }, []);
-
+  const boat = useMemo(() => toGeometry(buildYacht()), []);
+  const stars = useMemo(() => toGeometry(buildStars()), []);
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -111,7 +176,7 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
           uGlow: { value: 1 },
           uPointer: { value: new THREE.Vector2(9, 9) },
           uAspect: { value: 1 },
-          uSize: { value: 44 },
+          uSize: { value: 20 },
           uPixelRatio: { value: 1 },
         },
       }),
@@ -119,33 +184,35 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
   );
 
   useEffect(() => () => {
-    geometry.dispose();
+    boat.dispose();
+    stars.dispose();
     material.dispose();
-  }, [geometry, material]);
+  }, [boat, stars, material]);
 
-  // Wide screens: boat on the right, text on the left. Narrow: centred and
-  // scaled to the width.
   const layout = useMemo(() => {
-    const cam = camera as THREE.PerspectiveCamera;
-    const dist = cam.position.length();
-    const visibleH = 2 * dist * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
-    const visibleW = visibleH * (size.width / size.height);
-    const wide = size.width / size.height > 1.15;
-    // Wide: a big bow-forward close-up, stern running off the top right.
-    // Narrow: the whole boat, centred above the copy.
-    const scale = wide ? Math.min(1.25, (visibleW * 0.74) / 6.6) : (visibleW * 0.8) / 6.6;
-    // Particles are sized in pixels; keep their footprint in step with the
-    // boat's on-screen size so a small boat doesn't saturate to white.
-    const pointScale = Math.min(1.2, Math.max(0.35, (scale * size.height) / visibleH / 170));
-    return { scale, pointScale, x: wide ? visibleW * 0.31 : 0, y: wide ? 0.02 : 0.1 };
-  }, [camera, size]);
+    // Matches the CSS breakpoint where the copy moves beside the boat.
+    const f = frame(size.width, size.height, window.matchMedia("(min-width: 1024px)").matches);
+    // Particles are sized in pixels; keep them in step with the boat's
+    // on-screen scale so a small boat doesn't saturate to white.
+    const pxPerUnit = size.height / (2 * f.dist * Math.tan(THREE.MathUtils.degToRad(POSE.fov / 2)));
+    return { ...f, pointScale: Math.min(1.25, Math.max(0.35, pxPerUnit / 176)) };
+  }, [size]);
 
-  const scratch = useMemo(() => ({ corner: new THREE.Vector3(), min: new THREE.Vector2(), max: new THREE.Vector2() }), []);
-  const motion = useRef({ intro: reduce ? 0 : 1, hover: 0, glow: 1, rotX: BASE_ROT_X, rotY: BASE_ROT_Y });
+  // Lens shift: move the boat across the frame without changing perspective.
+  useLayoutEffect(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+    cam.fov = POSE.fov;
+    cam.setViewOffset(size.width, size.height, (-layout.dx * size.width) / 2, (layout.dy * size.height) / 2, size.width, size.height);
+    cam.updateProjectionMatrix();
+  }, [camera, size, layout]);
+
+  const scratch = useMemo(() => new THREE.Vector3(), []);
+  const motion = useRef({ intro: reduce ? 0 : 1, hover: 0, glow: 1, leanX: 0, leanY: 0 });
 
   useFrame((state, delta) => {
-    const g = group.current;
-    if (!g) return;
+    const outer = lean.current;
+    const inner = body.current;
+    if (!outer || !inner) return;
     const dt = Math.min(delta, 0.05);
     const m = motion.current;
     const u = material.uniforms;
@@ -159,33 +226,35 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
     u.uScatter.value = reduce ? 0 : Math.max(m.intro ** 3, progress);
     u.uFade.value = reduce ? progress : 0;
 
-    // Is the pointer over the boat? Test against its projected bounding box.
-    scratch.min.set(Infinity, Infinity);
-    scratch.max.set(-Infinity, -Infinity);
-    for (let i = 0; i < 8; i++) {
-      scratch.corner
-        .set(i & 1 ? SHIP_BOX.max.x : SHIP_BOX.min.x, i & 2 ? SHIP_BOX.max.y : SHIP_BOX.min.y, i & 4 ? SHIP_BOX.max.z : SHIP_BOX.min.z)
-        .applyMatrix4(g.matrixWorld)
-        .project(camera);
-      scratch.min.set(Math.min(scratch.min.x, scratch.corner.x), Math.min(scratch.min.y, scratch.corner.y));
-      scratch.max.set(Math.max(scratch.max.x, scratch.corner.x), Math.max(scratch.max.y, scratch.corner.y));
+    // Is the pointer over the boat? Test against its projected bounds.
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const c of BOX_CORNERS) {
+      const v = scratch.copy(c).applyMatrix4(inner.matrixWorld).project(camera);
+      minX = Math.min(minX, v.x);
+      maxX = Math.max(maxX, v.x);
+      minY = Math.min(minY, v.y);
+      maxY = Math.max(maxY, v.y);
     }
+    minX = Math.max(minX, -1);
+    maxX = Math.min(maxX, 1);
+    minY = Math.max(minY, -1);
+    maxY = Math.min(maxY, 1);
     const p = pointer.current;
-    const over = p.inside && p.x > scratch.min.x && p.x < scratch.max.x && p.y > scratch.min.y && p.y < scratch.max.y;
+    const over = p.inside && p.x > minX && p.x < maxX && p.y > minY && p.y < maxY;
     m.hover += ((over && progress < 0.2 ? 1 : 0) - m.hover) * ease(5);
 
-    // Lean away from the pointer, like pressing a floating card.
-    const cx = (scratch.min.x + scratch.max.x) / 2;
-    const cy = (scratch.min.y + scratch.max.y) / 2;
-    const relX = Math.max(-1, Math.min(1, (p.x - cx) / ((scratch.max.x - scratch.min.x) / 2 || 1)));
-    const relY = Math.max(-1, Math.min(1, (p.y - cy) / ((scratch.max.y - scratch.min.y) / 2 || 1)));
-    const targetY = BASE_ROT_Y + 0.16 * relX * m.hover + Math.sin(t * 0.35) * 0.04;
-    const targetX = BASE_ROT_X - 0.1 * relY * m.hover;
-    m.rotY += (targetY - m.rotY) * ease(3);
-    m.rotX += (targetX - m.rotX) * ease(3);
-    g.rotation.set(m.rotX, m.rotY, Math.sin(t * 0.6) * 0.012);
-    g.position.set(layout.x, layout.y + Math.sin(t * 0.8) * 0.05, 0);
-    g.scale.setScalar(layout.scale);
+    // Lean away from the pointer, like pressing a floating card, plus a slow
+    // idle sway. The outer group rotates in screen space around the boat.
+    const relX = Math.max(-1, Math.min(1, (p.x - (minX + maxX) / 2) / 0.6));
+    const relY = Math.max(-1, Math.min(1, (p.y - (minY + maxY) / 2) / 0.6));
+    m.leanY += (0.12 * relX * m.hover + Math.sin(t * 0.35) * 0.025 - m.leanY) * ease(3);
+    m.leanX += (-0.08 * relY * m.hover - m.leanX) * ease(3);
+    outer.position.set(0, 0, -layout.dist);
+    outer.rotation.set(m.leanX, m.leanY, 0);
+    inner.position.y = Math.sin(t * 0.8) * 0.03;
 
     m.glow += ((glow ? 1.45 : 1) - m.glow) * ease(4);
     u.uTime.value = t;
@@ -194,13 +263,18 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
     u.uPointer.value.set(p.x, p.y);
     u.uAspect.value = size.width / size.height;
     u.uPixelRatio.value = gl.getPixelRatio();
-    u.uSize.value = 40 * layout.pointScale;
+    u.uSize.value = 26 * layout.pointScale;
   });
 
   return (
-    <group ref={group}>
-      <points geometry={geometry} material={material} frustumCulled={false} />
-    </group>
+    <>
+      <points geometry={stars} material={material} frustumCulled={false} />
+      <group ref={lean}>
+        <group ref={body} rotation={[POSE.tilt, POSE.yaw, POSE.roll, "ZXY"]}>
+          <points geometry={boat} material={material} frustumCulled={false} />
+        </group>
+      </group>
+    </>
   );
 }
 
@@ -247,8 +321,7 @@ export function YachtScene({ glow = false }: { glow?: boolean }) {
         frameloop={active ? "always" : "never"}
         dpr={[1, 1.75]}
         gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
-        camera={{ position: [0, 3.6, 6.6], fov: 44, near: 0.1, far: 60 }}
-        onCreated={({ camera }) => camera.lookAt(0, 0.3, 0)}
+        camera={{ position: [0, 0, 0], rotation: [0, 0, 0], fov: POSE.fov, near: 0.1, far: 80 }}
         resize={{ scroll: false }}
       >
         <Yacht glow={glow} pointer={pointer} reduce={reduce} />
