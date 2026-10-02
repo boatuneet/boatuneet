@@ -5,8 +5,8 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildYacht } from "./geometry";
 
-const BASE_ROT_Y = -0.62; // bow toward the viewer's right
-const BASE_ROT_X = 0.06;
+const BASE_ROT_Y = -2.56; // bow toward the viewer and the copy on the left
+const BASE_ROT_X = 0.26; // tipped toward the camera: more deck, bow lower
 const SHIP_BOX = new THREE.Box3(new THREE.Vector3(-3.4, -0.45, -1.1), new THREE.Vector3(3.25, 2.45, 1.1));
 
 const vertexShader = /* glsl */ `
@@ -131,11 +131,13 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
     const visibleH = 2 * dist * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
     const visibleW = visibleH * (size.width / size.height);
     const wide = size.width / size.height > 1.15;
-    const scale = wide ? Math.min(0.9, (visibleW * 0.44) / 6.6) : (visibleW * 0.8) / 6.6;
+    // Wide: a big bow-forward close-up, stern running off the top right.
+    // Narrow: the whole boat, centred above the copy.
+    const scale = wide ? Math.min(1.25, (visibleW * 0.74) / 6.6) : (visibleW * 0.8) / 6.6;
     // Particles are sized in pixels; keep their footprint in step with the
     // boat's on-screen size so a small boat doesn't saturate to white.
-    const pointScale = Math.min(1.3, Math.max(0.35, (scale * size.height) / visibleH / 96));
-    return { scale, pointScale, x: wide ? visibleW * 0.22 : 0, y: wide ? -0.15 : 0 };
+    const pointScale = Math.min(1.2, Math.max(0.35, (scale * size.height) / visibleH / 170));
+    return { scale, pointScale, x: wide ? visibleW * 0.31 : 0, y: wide ? 0.02 : 0.1 };
   }, [camera, size]);
 
   const scratch = useMemo(() => ({ corner: new THREE.Vector3(), min: new THREE.Vector2(), max: new THREE.Vector2() }), []);
@@ -192,7 +194,7 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
     u.uPointer.value.set(p.x, p.y);
     u.uAspect.value = size.width / size.height;
     u.uPixelRatio.value = gl.getPixelRatio();
-    u.uSize.value = 44 * layout.pointScale;
+    u.uSize.value = 40 * layout.pointScale;
   });
 
   return (
@@ -245,8 +247,8 @@ export function YachtScene({ glow = false }: { glow?: boolean }) {
         frameloop={active ? "always" : "never"}
         dpr={[1, 1.75]}
         gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
-        camera={{ position: [0, 2.6, 9.2], fov: 35, near: 0.1, far: 60 }}
-        onCreated={({ camera }) => camera.lookAt(0, 0.35, 0)}
+        camera={{ position: [0, 3.6, 6.6], fov: 44, near: 0.1, far: 60 }}
+        onCreated={({ camera }) => camera.lookAt(0, 0.3, 0)}
         resize={{ scroll: false }}
       >
         <Yacht glow={glow} pointer={pointer} reduce={reduce} />
