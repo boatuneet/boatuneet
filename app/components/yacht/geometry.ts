@@ -213,12 +213,14 @@ function builder(seed: number) {
     const spark = rand() < 0.07;
     add(p, spark ? dim(mix(base, WHITE, 0.6), 0.95) : dim(base, k * (0.7 + rand() * 0.6)), spark ? size * 1.5 : size * (0.75 + rand() * 0.5), n);
   };
-  /** n points along a curve; a few become brighter glints. */
-  const line = (n: number, at: (t: number) => Vec, c: RGB, size = 1, spread = 0.006) => {
+  /** n points along a curve; a few become brighter glints. Pass `normal`
+   *  for lines on the hull underside, so they hide like the surfaces do. */
+  const line = (n: number, at: (t: number) => Vec, c: RGB, size = 1, spread = 0.006, normal?: (t: number) => Vec) => {
     for (let i = 0; i < n; i++) {
-      const [x, y, z] = at(rand());
+      const t = rand();
+      const [x, y, z] = at(t);
       const glint = rand() < 0.03;
-      add([x + jitter(spread), y + jitter(spread), z + jitter(spread)], glint ? mix(c, WHITE, 0.5) : c, size * (glint ? 2 : 0.9 + rand() * 0.45));
+      add([x + jitter(spread), y + jitter(spread), z + jitter(spread)], glint ? mix(c, WHITE, 0.5) : c, size * (glint ? 2 : 0.9 + rand() * 0.45), normal ? normal(t) : NONE);
     }
   };
   const both = (fn: (zs: number) => void) => {
@@ -322,13 +324,17 @@ export function buildYacht(seed = 11): YachtCloud {
   both((zs) => {
     line(2800, (u) => hull(u, 1, zs), WHITE, 1); // deck edge
     line(1300, (u) => hull(u, 0.9, zs), ICE, 0.85); // rub rail
-    line(700, (u) => hull(u, 0.34, zs), dim(BLUE, 0.7), 0.75); // chine
+    line(700, (u) => hull(u, 0.34, zs), dim(BLUE, 0.7), 0.75, 0.006, (u) => hullNormal(u, 0.34, zs)); // chine
     for (const [a, z] of hullWindows) {
       for (const s of hullBand) line(110, (t) => hull(lerp(a, z, t), s, zs), ICE, 0.8);
       for (const u of [a, z]) line(24, (t) => hull(u, lerp(hullBand[0], hullBand[1], t), zs), ICE, 0.8);
     }
   });
-  line(1000, (t) => { const u = lerp(0.6, 1, t); return [xAt(u), keel(u), 0]; }, ICE, 0.9); // stem
+  // Keel and stem: the normal turns from straight down (hidden from above)
+  // to forward as the stem rises, so only the bow's leading edge shows.
+  const keelAt = (t: number) => lerp(0.6, 1, t);
+  const keelSlope = (u: number) => (keel(Math.min(1, u + 0.005)) - keel(u - 0.005)) / (0.01 * LENGTH);
+  line(1000, (t) => { const u = keelAt(t); return [xAt(u), keel(u), 0]; }, ICE, 0.9, 0.006, (t) => [keelSlope(keelAt(t)), -1, 0]);
   both((zs) => line(260, (s) => hull(0, s, zs), WHITE, 0.9)); // transom edge
   for (let i = 0; i < 800; i++) {
     const s = rand();

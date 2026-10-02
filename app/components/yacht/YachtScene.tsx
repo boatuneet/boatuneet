@@ -56,22 +56,29 @@ const vertexShader = /* glsl */ `
       facing = mix(0.08, 1.0, smoothstep(-0.2, 0.3, dot(n, normalize(-mv.xyz))));
     }
 
-    // Cursor bulge in screen space: a magnifier lens over the boat. The push
-    // grows with distance from the cursor (zero at its centre), so points
-    // spread apart and swell instead of leaving a hole.
-    const float R = 0.3;
+    // Cursor dispersal in screen space: particles near the pointer drift
+    // outward by their own random amount, with a little swirl and scatter,
+    // so the cloud parts softly around it. Smooth falloff, no hard edge.
+    const float R = 0.42;
     vec2 ndc = clip.xy / clip.w;
     vec2 d = (ndc - uPointer) * vec2(uAspect, 1.0);
-    float falloff = max(0.0, 1.0 - length(d) / R);
-    float push = uHover * (1.0 - aKind) * falloff * falloff;
-    ndc += d * push * 1.0 / vec2(uAspect, 1.0);
+    float dist = length(d);
+    float push = uHover * (1.0 - 0.6 * aKind) * (1.0 - smoothstep(0.0, R, dist));
+    vec2 dir = dist > 0.0001 ? d / dist : vec2(0.0);
+    vec3 h = hash3(aSeed + 1.7);
+    // Reach is biased small, so the centre thins out instead of emptying and
+    // there is no bright ring where every particle would otherwise land.
+    float reach = R * 0.62 * pow(fract(aSeed * 13.7), 1.6);
+    vec2 offset = dir * reach + vec2(-dir.y, dir.x) * h.x * R * 0.16 + h.yz * R * 0.2;
+    ndc += offset * push / vec2(uAspect, 1.0);
     clip.xy = ndc * clip.w;
     gl_Position = clip;
 
     float twinkle = 0.8 + 0.2 * sin(uTime * (1.4 + fract(aSeed * 5.3) * 2.6) + aSeed * 40.0);
-    gl_PointSize = uSize * aSize * uPixelRatio * (1.0 + push * 0.9 + s * 0.6) / -mv.z;
-    vColor = color * twinkle * uGlow * (1.0 + push * 0.7);
-    vAlpha = (1.0 - s) * (1.0 - uFade) * facing;
+    gl_PointSize = uSize * aSize * uPixelRatio * (1.0 + push * 0.45 + s * 0.6) / -mv.z;
+    vColor = color * twinkle * uGlow * (1.0 + push * 0.25);
+    // Scattered particles turn to fainter dust.
+    vAlpha = (1.0 - s) * (1.0 - uFade) * facing * (1.0 - 0.35 * push);
   }
 `;
 
@@ -207,7 +214,7 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
   }, [camera, size, layout]);
 
   const scratch = useMemo(() => new THREE.Vector3(), []);
-  const motion = useRef({ intro: reduce ? 0 : 1, hover: 0, glow: 1, leanX: 0, leanY: 0 });
+  const motion = useRef({ intro: reduce ? 0 : 1, hover: 0, glow: 1, leanX: 0, leanY: 0, px: 9, py: 9 });
 
   useFrame((state, delta) => {
     const outer = lean.current;
@@ -244,7 +251,15 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
     maxY = Math.min(maxY, 1);
     const p = pointer.current;
     const over = p.inside && p.x > minX && p.x < maxX && p.y > minY && p.y < maxY;
-    m.hover += ((over && progress < 0.2 ? 1 : 0) - m.hover) * ease(5);
+    m.hover += ((over && progress < 0.2 && !reduce ? 1 : 0) - m.hover) * ease(3);
+    // The dispersal trails the pointer instead of snapping to it. Jump on
+    // entry so it doesn't sweep in from wherever the pointer last was.
+    if (m.hover < 0.01) {
+      m.px = p.x;
+      m.py = p.y;
+    }
+    m.px += (p.x - m.px) * ease(7);
+    m.py += (p.y - m.py) * ease(7);
 
     // Lean away from the pointer, like pressing a floating card, plus a slow
     // idle sway. The outer group rotates in screen space around the boat.
@@ -260,7 +275,7 @@ function Yacht({ glow, pointer, reduce }: { glow: boolean; pointer: React.RefObj
     u.uTime.value = t;
     u.uHover.value = m.hover;
     u.uGlow.value = m.glow;
-    u.uPointer.value.set(p.x, p.y);
+    u.uPointer.value.set(m.px, m.py);
     u.uAspect.value = size.width / size.height;
     u.uPixelRatio.value = gl.getPixelRatio();
     u.uSize.value = 26 * layout.pointScale;
