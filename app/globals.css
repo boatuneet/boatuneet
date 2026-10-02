@@ -164,187 +164,77 @@ body {
   background: #000000;
 }
 
-/* Fan of yacht cards peeking from the hero's bottom edge. The section's
-   overflow: hidden clips them, so scrolling never reveals the full images. */
-.hero-cards {
+/* Particle-yacht hero: copy on the left, the boat fills the rest. */
+.hero-yacht {
   position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 5;
-  pointer-events: none;
-  transform: translateY(50%);
+  inset: 0;
 }
 
-.hero-cards__row {
-  display: flex;
-  justify-content: center;
-  gap: clamp(10px, 1vw, 26px);
-}
-
-.hero-card {
-  --r: 0deg;
-  --y: 0px;
-  --radius: 20px;
-  position: relative;
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  /* Fluid width so all seven cards fit the viewport instead of clipping. */
-  width: clamp(178px, 12.4vw, 240px);
-  border-radius: var(--radius);
-  background: #ffffff;
-  box-shadow: 0 -10px 40px -22px rgb(0 0 0 / 0.55);
-  pointer-events: auto;
-  transform: rotate(var(--r)) translateY(var(--y));
-  /* Return trip is slower than the reveal. */
-  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* Reveal: every card straightens fully and rises to the same height,
-   clearing the viewport edge so the bottom corners stay visible. */
-.hero-card:hover {
-  z-index: 2;
-  transform: rotate(0deg) translateY(-150px);
-  transition-duration: 420ms;
-}
-
-/* While lifted, an invisible tail keeps the pointer's original spot inside
-   the card's hit area — otherwise the card moves away from the cursor,
-   loses :hover, snaps back, and flickers in a loop. */
-.hero-card:hover::after {
+/* Keeps the copy legible where it overlaps drifting particles. */
+.chapter--hero::after {
   content: "";
   position: absolute;
-  left: -44px;
-  right: -44px;
-  top: -20px;
-  bottom: -220px;
-}
-
-.hero-card__media {
-  position: relative;
-  aspect-ratio: 570 / 360; /* native ratio of the card images */
-  overflow: hidden;
-  border-radius: var(--radius) var(--radius) 0 0;
-}
-
-.hero-card__media img {
-  object-fit: cover;
-}
-
-.hero-card__badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
+  inset: 0;
   z-index: 1;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.92);
-  padding: 4px 10px;
-  color: #0f2947;
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.72) 0%, rgb(0 0 0 / 0.35) 38%, transparent 58%);
+  pointer-events: none;
 }
 
-/* Body tucks under the photo so its own rounded top corners read against it. */
-.hero-card__body {
-  position: relative;
-  z-index: 1;
-  margin-top: -16px;
-  border-radius: var(--radius);
-  background: inherit;
-  padding: 15px 16px;
+.hero-layout {
+  display: flex;
+  align-items: center;
+  padding-top: 96px;
+  padding-bottom: 56px;
 }
 
-.hero-card__title {
-  margin: 0;
-  color: #46586f;
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.hero-copy {
+  max-width: 600px;
 }
 
-.hero-card__price {
-  margin-top: 6px;
-  color: var(--boat-navy);
-  font-family: var(--font-google-sans-flex), var(--font-geist-sans), Arial, sans-serif;
-  font-size: 1.2rem;
-  font-weight: 750;
-  letter-spacing: -0.035em;
-  line-height: 1;
+.hero-lede {
+  max-width: 520px;
+  margin-top: 22px;
+  color: rgb(255 255 255 / 0.7);
+  font-size: 1.05rem;
+  font-weight: 300;
+  line-height: 1.7;
 }
 
-.hero-card__specs {
+.hero-points {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 11px 0 0;
-  padding: 0;
-  list-style: none;
+  gap: 10px 22px;
+  margin-top: 20px;
+  color: rgb(255 255 255 / 0.82);
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-.hero-card__specs li {
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  padding: 3px 9px;
-  color: #46586f;
-  font-size: 0.66rem;
-  font-weight: 600;
+.hero-points li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.hero-card__place {
-  margin-top: 11px;
-  color: #8194ab;
-  font-size: 0.68rem;
+.hero-form {
+  max-width: 512px;
+  margin-top: 30px;
 }
 
-.hero-card:nth-child(1) { --r: -16deg; --y: 96px; }
-.hero-card:nth-child(2) { --r: -10deg; --y: 48px; }
-.hero-card:nth-child(3) { --r: -5deg; --y: 14px; }
-.hero-card:nth-child(5) { --r: 5deg; --y: 14px; }
-.hero-card:nth-child(6) { --r: 10deg; --y: 48px; }
-.hero-card:nth-child(7) { --r: 16deg; --y: 96px; }
-
-@media (max-height: 820px) {
-  .hero-cards {
-    transform: translateY(62%);
+@media (max-width: 1023px) {
+  /* Boat on top, copy underneath. */
+  .hero-yacht {
+    bottom: auto;
+    height: 48svh;
   }
 
-  /* Deeper resting offset needs a taller lift to clear the bottom edge. */
-  .hero-card:hover {
-    transform: rotate(0deg) translateY(-182px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-card {
-    transition: none;
-  }
-}
-
-@media (max-width: 767px) {
-  .hero-cards__row {
-    gap: 16px;
+  .chapter--hero::after {
+    background: linear-gradient(180deg, transparent 30%, rgb(0 0 0 / 0.6) 48%, #000 62%);
   }
 
-  .hero-card {
-    --radius: 16px;
-    width: 178px;
-  }
-
-  .hero-card__body {
-    padding: 12px 13px 13px;
-  }
-
-  .hero-card__price {
-    font-size: 1rem;
-  }
-
-  .hero-card:nth-child(1),
-  .hero-card:nth-child(7) {
-    display: none;
+  .chapter-inner.hero-layout {
+    align-items: flex-start;
+    padding-top: 40svh;
   }
 }
 
@@ -2058,15 +1948,6 @@ body {
 
   .chapter-inner {
     padding: 96px 20px 72px;
-  }
-
-  .chapter--hero .chapter-inner {
-    align-items: flex-start;
-    padding-top: 110px;
-  }
-
-  .hero-copy {
-    padding-block: 20px 56px;
   }
 
   /* Viewport-scaled so the strong line fits on one row down to 320px. */

@@ -27,18 +27,7 @@ import {
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ValuationForm } from "./shared";
-import { GL } from "./gl";
-
-const YACHT_CARDS = [
-  { title: "2015 Pershing 92", price: "$2,825,000", specs: ["92 ft", "Mega Yacht"], place: "Fort Lauderdale, Florida" },
-  { title: "2024 Benetti 34M Oasis", price: "$2,350,000", specs: ["112 ft", "Mega Yacht"], place: "Fort Lauderdale, Florida" },
-  { title: "2012 Sunseeker Manhattan 73", price: "$1,399,000", specs: ["74.2 ft", "Motor Yacht"], place: "La Paz, Mexico" },
-  { title: "2025 Riva 130' Bellissima", price: "$24,950,000", specs: ["130 ft", "Motor Yacht"], place: "Palm Beach, Florida" },
-  { title: "2026 Sunreef 80 Power", price: "$12,574,088", specs: ["80 ft", "Catamaran"], place: "Gdansk, Poland" },
-  { title: "2029 ISA Gran Turismo 66", price: "$74,685,998", specs: ["217.7 ft", "Mega Yacht"], place: "Ancona, Italy" },
-  { title: "2001 Jongert 42T", price: "$8,052,084", specs: ["137.8 ft", "Sail Cruiser"], place: "Vilanova i la Geltrú, Barcelona" },
-// v2 busts browser + image-optimizer caches from the previous card set.
-].map((listing, i) => ({ ...listing, src: `/cards/card-${i + 1}.png?v=2` }));
+import { YachtScene } from "./yacht/YachtScene";
 
 const PLAN_WEEKS = 13;
 
@@ -180,14 +169,6 @@ function useChapterMotion() {
 
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
-      gsap.from("[data-hero-image]", {
-        opacity: 0,
-        scale: 1.065,
-        duration: 1.05,
-        ease: "power3.out",
-        clearProps: "opacity,transform",
-      });
-
       const heroLineReveal = gsap.timeline({ paused: true }).fromTo(
         "[data-hero-line]",
         { opacity: 0, y: 36 },
@@ -206,18 +187,6 @@ function useChapterMotion() {
         trigger: "#intro",
         start: "top 55%",
         onEnterBack: () => heroLineReveal.restart(),
-      });
-
-      gsap.to("[data-hero-image]", {
-        yPercent: 4,
-        scale: 1.035,
-        ease: "none",
-        scrollTrigger: {
-          trigger: "#intro",
-          start: "top top",
-          end: "bottom top",
-          scrub: 0.55,
-        },
       });
 
       sections.slice(1).forEach((section) => {
@@ -855,50 +824,27 @@ export default function ComingSoon() {
       <Header active={active} />
 
       <section id="intro" data-chapter className="chapter chapter--hero scroll-mt-0">
-        <div data-hero-image className="absolute inset-0" aria-hidden="true">
-          <GL hovering={ctaHovering} />
+        <div className="hero-yacht" aria-hidden="true">
+          <YachtScene glow={ctaHovering} />
         </div>
-        <div className="hero-cards" aria-hidden="true">
-          <div data-hero-line className="hero-cards__row">
-            {YACHT_CARDS.map(({ src, title, price, specs, place }) => (
-              <article key={src} className="hero-card">
-                <div className="hero-card__media">
-                  <Image src={src} alt="" fill sizes="240px" />
-                  <span className="hero-card__badge">For sale</span>
-                </div>
-                <div className="hero-card__body">
-                  <h3 className="hero-card__title">{title}</h3>
-                  <p className="hero-card__price">{price}</p>
-                  <ul className="hero-card__specs">
-                    {specs.map((spec) => (
-                      <li key={spec}>{spec}</li>
-                    ))}
-                  </ul>
-                  <p className="hero-card__place">{place}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-        <div className="chapter-inner pointer-events-none relative z-10 flex min-h-full items-center justify-center pt-[88px] pb-32 lg:pb-40">
-          <div className="hero-copy pointer-events-auto mx-auto max-w-[840px] py-10 text-center lg:py-14">
-            <p data-hero-line className="mb-5 text-xs font-bold uppercase tracking-[0.16em] text-sky-300 lg:hidden">— Intro</p>
+        <div className="chapter-inner hero-layout pointer-events-none relative z-10">
+          <div className="hero-copy pointer-events-auto">
             <h1 className="hero-heading text-white">
-              <span data-hero-line className="hero-heading__strong block drop-shadow-2xl">Sell your boat.</span>
-              <span data-hero-line className="hero-heading__light hero-gradient-text mt-2 block sm:whitespace-nowrap">Keep more of the price.</span>
+              <span data-hero-line className="hero-heading__strong block">Sell your boat.</span>
+              <span data-hero-line className="hero-heading__light hero-gradient-text mt-2 block">Keep more of the price.</span>
             </h1>
-            <p data-hero-line className="mx-auto mt-6 max-w-[800px] text-base font-light leading-7 text-white/70 sm:text-lg">
-              A managed 90-day sale — market-informed pricing, screened buyers and coordinated closing — for a 2.5% success fee instead of the typical 8–10% brokerage. Start with a free valuation.
+            <p data-hero-line className="hero-lede">
+              A managed 90-day sale — market-informed pricing, screened buyers and coordinated closing — for a 2.5% success fee instead of the typical 8–10% brokerage.
             </p>
-            <ul data-hero-line className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm font-medium text-white/80" aria-label="BoatUneet highlights">
+            <ul data-hero-line className="hero-points" aria-label="BoatUneet highlights">
               {["Free valuation range", "No upfront fee", "Pay 2.5% only when it sells"].map((item) => (
-                <li key={item} className="flex items-center gap-2">
+                <li key={item}>
                   <Check size={16} weight="bold" className="text-sky-400" aria-hidden="true" />
                   {item}
                 </li>
               ))}
             </ul>
-            <div data-hero-line className="mx-auto mt-8 max-w-xl">
+            <div data-hero-line className="hero-form">
               <ValuationForm compact dark onButtonHover={setCtaHovering} />
             </div>
           </div>
