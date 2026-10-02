@@ -149,7 +149,7 @@ export default async function BlogPostPage({ params }: Props) {
                 <p className="blog-eyebrow text-sky-300">Free valuation</p>
                 <h2 id="article-cta-title">Turn your research into a realistic starting range.</h2>
                 <p>
-                  Tell us where to reach you. We&apos;ll ask about your boat and send a market-informed valuation range,
+                  Tell us about your boat and where to reach you. We&apos;ll send a market-informed valuation range,
                   usually within two business days.
                 </p>
                 <ValuationForm compact dark />

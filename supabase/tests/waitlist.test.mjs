@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 const MIGRATIONS = [
   "20260731044503_waitlist_schema.sql",
   "20260731062558_stable_waitlist_position.sql",
+  "20261002090000_valuation_requests.sql",
 ];
 const SQL = MIGRATIONS.map((m) =>
   readFileSync(new URL(`../migrations/${m}`, import.meta.url), "utf8"),
@@ -130,5 +131,26 @@ const rls = await db.query(`
 `);
 for (const r of rls.rows) assert.equal(r.relrowsecurity, true, `${r.relname} needs RLS`);
 console.log("✓ RLS on, anon/authenticated locked out, service_role allowed");
+
+// ---- valuation requests: boat details, one row per boat -----------------
+const addBoat = (make, model, year, hin = null) =>
+  db.query(
+    "insert into valuation_requests (email, make, model, year, hin) values ('first@example.com', $1, $2, $3, $4)",
+    [make, model, year, hin],
+  );
+await addBoat("Sunseeker", "Manhattan 73", 2012, "XSK12345D404");
+await addBoat("Riva", "Aquariva", 2008); // HIN optional, same email twice is fine
+await assert.rejects(() => addBoat("Riva", "Aquariva", 1850), /valuation_requests_year/);
+await assert.rejects(() => addBoat("Riva", "Aquariva", 2008, "xsk-123"), /valuation_requests_hin/);
+await assert.rejects(() => addBoat("", "Aquariva", 2008), /valuation_requests_make_len/);
+const vr = await db.query(`
+  select relrowsecurity,
+         (select count(*) from information_schema.role_table_grants
+           where table_name = 'valuation_requests' and grantee in ('anon','authenticated')) as browser_grants
+    from pg_class where relname = 'valuation_requests'
+`);
+assert.equal(vr.rows[0].relrowsecurity, true, "valuation_requests needs RLS");
+assert.equal(Number(vr.rows[0].browser_grants), 0, "anon/authenticated must have no grants");
+console.log("✓ valuation_requests: constraints hold, RLS on, browser roles locked out");
 
 console.log("\nALL TESTS PASSED");

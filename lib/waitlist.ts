@@ -101,3 +101,17 @@ export async function join(
     alreadyRegistered: data.already_registered,
   };
 }
+
+export type Boat = {
+  make: string;
+  model: string;
+  year: number;
+  hin: string | null;
+};
+
+export async function saveBoat(email: string, boat: Boat) {
+  const sb = client();
+  if (!sb) throw new Error("not_configured");
+  const { error } = await sb.from("valuation_requests").insert({ email, ...boat });
+  if (error) throw new Error(error.message);
+}

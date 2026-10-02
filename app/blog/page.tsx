@@ -140,8 +140,8 @@ export default function BlogPage() {
                 <p className="blog-eyebrow text-sky-300">A useful first step</p>
                 <h2 id="blog-cta-title">Find out what your boat could be worth.</h2>
                 <p>
-                  Share your email and we&apos;ll ask a few quick questions, then send a market-informed price range,
-                  free and with no obligation.
+                  Tell us the make, model and year, and we&apos;ll send a market-informed price range based on comparable
+                  listings, free and with no obligation.
                 </p>
               </div>
               <ValuationForm compact dark />
