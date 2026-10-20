@@ -1,5 +1,6 @@
 import { join, isConfigured, saveBoat, recordConsent, type Boat } from "@/lib/waitlist";
 import { POLICY_VERSION } from "@/lib/privacy";
+import { notifyNewLead } from "@/lib/notify";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -72,6 +73,20 @@ export async function POST(request: Request) {
     if (body.marketing === true) {
       await recordConsent(email, "marketing_email", true, "website:valuation", POLICY_VERSION).catch(log);
     }
+    // Heads-up to the team. Logged, not surfaced: the lead is already saved.
+    await notifyNewLead(
+      boat ? `New valuation request: ${boat.year} ${boat.make} ${boat.model}` : "New waitlist signup",
+      {
+        Email: email,
+        Boat: boat ? `${boat.year} ${boat.make} ${boat.model}` : null,
+        HIN: boat?.hin,
+        "Marketing opt-in": body.marketing === true ? "yes" : "no",
+        Source: source,
+        "Referred by": referredBy,
+        Position: result.position,
+        "Already registered": result.alreadyRegistered ? "yes" : "no",
+      },
+    ).catch((err: Error) => console.error("lead notification failed:", err.message));
     return Response.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
