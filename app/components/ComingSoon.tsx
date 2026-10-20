@@ -27,6 +27,7 @@ import {
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ValuationForm } from "./shared";
+import SiteFooter from "./SiteFooter";
 import { YachtScene } from "./yacht/YachtScene";
 
 const PLAN_WEEKS = 13;
@@ -855,6 +856,7 @@ export default function ComingSoon() {
       <PlanChapter />
       <TrustChapter />
       <QuestionsChapter />
+      <SiteFooter />
     </main>
   );
 }

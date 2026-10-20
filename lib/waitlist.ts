@@ -115,3 +115,55 @@ export async function saveBoat(email: string, boat: Boat) {
   const { error } = await sb.from("valuation_requests").insert({ email, ...boat });
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------- privacy --
+
+export type ConsentKind = "privacy_ack" | "marketing_email";
+
+export async function recordConsent(
+  email: string,
+  kind: ConsentKind,
+  granted: boolean,
+  source: string | null,
+  policyVersion: string,
+) {
+  const sb = client();
+  if (!sb) throw new Error("not_configured");
+  const { error } = await sb
+    .from("consents")
+    .insert({ email, kind, granted, source, policy_version: policyVersion });
+  if (error) throw new Error(error.message);
+}
+
+export type MetaLead = {
+  leadgen_id: string;
+  form_id: string | null;
+  page_id: string | null;
+  ad_id: string | null;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  fields: { name: string; values: string[] }[];
+  submitted_at: string;
+  policy_version: string;
+};
+
+/** Idempotent: a re-delivered lead is ignored, not duplicated. */
+export async function saveMetaLead(lead: MetaLead) {
+  const sb = client();
+  if (!sb) throw new Error("not_configured");
+  const { error } = await sb
+    .from("meta_leads")
+    .upsert(lead, { onConflict: "leadgen_id", ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
+}
+
+/** Right to erasure: drop every row we hold for this email. */
+export async function eraseEmail(email: string) {
+  const sb = client();
+  if (!sb) throw new Error("not_configured");
+  for (const table of ["waitlist_signups", "valuation_requests", "meta_leads", "consents"]) {
+    const { error } = await sb.from(table).delete().ilike("email", email);
+    if (error) throw new Error(`${table}: ${error.message}`);
+  }
+}

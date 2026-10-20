@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SiteAnalytics from "./components/SiteAnalytics";
+import CookieConsent from "./components/CookieConsent";
 import {
   Geist,
   Fraunces,
@@ -51,6 +52,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <CookieConsent />
         <SiteAnalytics />
       </body>
     </html>

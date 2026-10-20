@@ -972,7 +972,9 @@ export default function ListingLab() {
               <UploadSimple size={15} />
               Import a report
             </button>
-            <span>Source claims remain unverified.</span>
+            <span>
+              Source claims remain unverified. <a href="/privacy">Privacy Policy</a>
+            </span>
           </footer>
         </main>
       </div>

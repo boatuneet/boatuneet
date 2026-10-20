@@ -7,6 +7,7 @@ const MIGRATIONS = [
   "20260731044503_waitlist_schema.sql",
   "20260731062558_stable_waitlist_position.sql",
   "20261002090000_valuation_requests.sql",
+  "20261020090000_privacy_consent.sql",
 ];
 const SQL = MIGRATIONS.map((m) =>
   readFileSync(new URL(`../migrations/${m}`, import.meta.url), "utf8"),
@@ -152,5 +153,47 @@ const vr = await db.query(`
 assert.equal(vr.rows[0].relrowsecurity, true, "valuation_requests needs RLS");
 assert.equal(Number(vr.rows[0].browser_grants), 0, "anon/authenticated must have no grants");
 console.log("✓ valuation_requests: constraints hold, RLS on, browser roles locked out");
+
+// ---- consents + meta leads: separate marketing consent, idempotent leads --
+await db.query(
+  "insert into consents (email, kind, granted, source, policy_version) values ('first@example.com','privacy_ack',true,'website:valuation','2026-10-19')",
+);
+await assert.rejects(
+  () => db.query("insert into consents (email, kind, granted, policy_version) values ('x@example.com','newsletter',true,'v')"),
+  /consents_kind/,
+);
+const marketing = await db.query(
+  "select count(*) from consents where lower(email) = 'first@example.com' and kind = 'marketing_email' and granted",
+);
+assert.equal(Number(marketing.rows[0].count), 0, "a lead/enquiry alone must never read as marketing consent");
+
+const lead = (id) =>
+  db.query(
+    "insert into meta_leads (leadgen_id, email, fields, submitted_at, policy_version) values ($1, 'first@example.com', '[]', now(), '2026-10-19')",
+    [id],
+  );
+await lead("L1");
+await assert.rejects(() => lead("L1"), /meta_leads_leadgen_id_key/);
+const leads = await db.query("select source, policy_version from meta_leads");
+assert.equal(leads.rows[0].source, "meta_lead_ads");
+assert.equal(leads.rows[0].policy_version, "2026-10-19");
+
+// Erasure: one email, every table.
+for (const t of ["waitlist_signups", "valuation_requests", "meta_leads", "consents"]) {
+  await db.query(`delete from ${t} where email ilike $1`, ["FIRST@example.com"]);
+  const left = await db.query(`select count(*) from ${t} where lower(email) = 'first@example.com'`);
+  assert.equal(Number(left.rows[0].count), 0, `${t} must be empty for the erased email`);
+}
+const priv = await db.query(`
+  select relname, relrowsecurity,
+         (select count(*) from information_schema.role_table_grants
+           where table_name = relname and grantee in ('anon','authenticated')) as browser_grants
+    from pg_class where relname in ('consents','meta_leads')
+`);
+for (const r of priv.rows) {
+  assert.equal(r.relrowsecurity, true, `${r.relname} needs RLS`);
+  assert.equal(Number(r.browser_grants), 0, `${r.relname}: browser roles must have no grants`);
+}
+console.log("✓ consents/meta_leads: kinds constrained, leads idempotent, erasure clean, locked down");
 
 console.log("\nALL TESTS PASSED");

@@ -1922,6 +1922,11 @@ body {
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }
+
+  /* Mandatory snap would otherwise leave the footer unreachable. */
+  .site-footer {
+    scroll-snap-align: end;
+  }
 }
 
 @media (max-width: 1023px) {
@@ -1988,4 +1993,63 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---------------------------------------------------------- site footer -- */
+
+.site-footer {
+  position: relative;
+  z-index: 2;
+  border-top: 1px solid var(--boat-line);
+  background: #ffffff;
+  color: #46586f;
+  font-size: 0.85rem;
+}
+
+.site-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  width: min(100%, 1480px);
+  margin-inline: auto;
+  padding: 22px 48px;
+}
+
+@media (max-width: 640px) {
+  .site-footer__inner {
+    padding-inline: 20px;
+  }
+}
+
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  font-weight: 600;
+}
+
+.site-footer__links a,
+.site-footer__links button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.site-footer__links a:hover,
+.site-footer__links button:hover {
+  color: var(--boat-blue);
+}
+
+.site-footer__links a:focus-visible,
+.site-footer__links button:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--boat-blue);
+  outline-offset: 4px;
 }

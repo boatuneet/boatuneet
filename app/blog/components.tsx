@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, Rss } from "@phosphor-icons/react/dist/ssr";
 import { type Block, type BlogPost, formatDate, readingTime } from "@/lib/blog";
+import { CookieSettingsButton } from "@/app/components/SiteFooter";
 
 export function BlogBrand() {
   return (
@@ -183,6 +184,8 @@ export function BlogFooter() {
           <a href="/blog/feed.xml" className="inline-flex items-center gap-1.5">
             <Rss size={14} weight="bold" aria-hidden="true" /> RSS
           </a>
+          <Link href="/privacy">Privacy Policy</Link>
+          <CookieSettingsButton className="hover:text-boat-blue" />
         </nav>
         <p className="blog-footer__copy">© {new Date().getFullYear()} BoatUneet</p>
       </div>

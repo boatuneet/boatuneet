@@ -1,4 +1,5 @@
-import { join, isConfigured, saveBoat, type Boat } from "@/lib/waitlist";
+import { join, isConfigured, saveBoat, recordConsent, type Boat } from "@/lib/waitlist";
+import { POLICY_VERSION } from "@/lib/privacy";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -63,6 +64,13 @@ export async function POST(request: Request) {
       await saveBoat(email, boat).catch((err: Error) =>
         console.error("valuation_requests insert failed:", err.message),
       );
+    }
+    // Consent is recorded as its own rows: the enquiry itself is never read
+    // as newsletter consent. Logged, not surfaced: the lead is already saved.
+    const log = (err: Error) => console.error("consents insert failed:", err.message);
+    await recordConsent(email, "privacy_ack", true, "website:valuation", POLICY_VERSION).catch(log);
+    if (body.marketing === true) {
+      await recordConsent(email, "marketing_email", true, "website:valuation", POLICY_VERSION).catch(log);
     }
     return Response.json(result);
   } catch (err) {

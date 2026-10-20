@@ -106,6 +106,7 @@ export function ValuationForm({
   const [editing, setEditing] = useState(false);
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState(""); // honeypot
+  const [marketing, setMarketing] = useState(false); // separate from the enquiry
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const id = useId();
@@ -137,6 +138,7 @@ export function ValuationForm({
           email,
           company,
           boat,
+          marketing,
           ref: params.get("ref"),
           source: params.get("utm_source"),
         }),
@@ -298,9 +300,21 @@ export function ValuationForm({
         </p>
       ) : (
         // ponytail: min-h-10 reserves two lines; copy longer than that brings the jump back.
-        <p className={`mt-3 min-h-10 text-left text-xs leading-5 ${t.sub}`}>
-          Free and no obligation — we reply within two business days.
-        </p>
+        <div className={`mt-3 min-h-10 text-left text-xs leading-5 ${t.sub}`}>
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="checkbox"
+              checked={marketing}
+              onChange={(e) => setMarketing(e.target.checked)}
+              className="mt-1 h-3.5 w-3.5 shrink-0 accent-blue-600"
+            />
+            <span>Also email me BoatUneet news and selling tips (optional).</span>
+          </label>
+          <p>
+            Free and no obligation. By sending you agree to our{" "}
+            <a href="/privacy" className={`underline underline-offset-2 ${t.link}`}>Privacy Policy</a>.
+          </p>
+        </div>
       )}
     </form>
   );

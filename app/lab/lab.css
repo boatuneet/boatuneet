@@ -1989,3 +1989,8 @@
     font-size: 11px;
   }
 }
+.ll-footer a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
